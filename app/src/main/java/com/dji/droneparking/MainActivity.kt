@@ -281,7 +281,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
                 .maxFlightSpeed(speed)
                 .flightPathMode(WaypointMissionFlightPathMode.NORMAL)
 
-            if (builder.waypointList.size > 0) {
+            if (builder.waypointList.isNotEmpty()) {
                 for (i in builder.waypointList.indices) {
                     builder.waypointList[i].altitude = altitude
                 }

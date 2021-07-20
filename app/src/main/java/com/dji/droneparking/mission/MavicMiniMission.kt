@@ -5,58 +5,80 @@ import dji.common.mission.waypoint.WaypointMissionFinishedAction
 import dji.common.mission.waypoint.WaypointMissionFlightPathMode
 import dji.common.mission.waypoint.WaypointMissionHeadingMode
 
-class MavicMiniMission(builder: Builder) {
-    var waypointList: List<Waypoint> = builder.waypointList
+class MavicMiniMission private constructor(
+    val waypointList: List<Waypoint>,
+    val finishedAction: WaypointMissionFinishedAction,
+    val headingMode: WaypointMissionHeadingMode,
+    val autoFlightSpeed: Float,
+    val maxFlightSpeed: Float,
+    val flightPathMode: WaypointMissionFlightPathMode,
+) {
 
-    class Builder(var waypointList: MutableList<Waypoint> = emptyList<Waypoint>() as MutableList<Waypoint>) {
+    class Builder(
+        private var waypoints: MutableList<Waypoint> = emptyList<Waypoint>() as MutableList<Waypoint>,
+        private var finishedAction: WaypointMissionFinishedAction = WaypointMissionFinishedAction.NO_ACTION,
+        private var headingMode: WaypointMissionHeadingMode = WaypointMissionHeadingMode.AUTO,
+        private var autoFlightSpeed: Float = 1.0f,
+        private var maxFlightSpeed: Float = 10.0f,
+        private var flightPathMode: WaypointMissionFlightPathMode = WaypointMissionFlightPathMode.NORMAL
+    ) {
+
+        val waypointList: List<Waypoint>
+            get() = this.waypoints
 
         fun addWaypoint(waypoint: Waypoint): Builder {
-            waypointList.add(waypoint)
+            waypoints.add(waypoint)
             return this
         }
 
         fun removeWaypoint(waypoint: Waypoint): Builder {
-            waypointList.remove(waypoint)
+            waypoints.remove(waypoint)
             return this
         }
 
         fun finishedAction(finishedAction: WaypointMissionFinishedAction): Builder {
-            //todo
+            this.finishedAction = finishedAction
             return this
         }
 
-        fun headingMode(headingMode: WaypointMissionHeadingMode):Builder{
-            //todo
+        fun headingMode(headingMode: WaypointMissionHeadingMode): Builder {
+            this.headingMode = headingMode
             return this
         }
 
         fun autoFlightSpeed(speed: Float): Builder {
-            // todo
+            this.autoFlightSpeed = speed
             return this
         }
 
         fun maxFlightSpeed(speed: Float): Builder {
-            // todo
+            this.maxFlightSpeed = speed
             return this
         }
 
-        fun flightPathMode(normal: WaypointMissionFlightPathMode): Builder {
-            // todo
+        fun flightPathMode(pathMode: WaypointMissionFlightPathMode): Builder {
+            this.flightPathMode = pathMode
             return this
         }
 
         fun build(): MavicMiniMission? {
             return if (isValid())
-                MavicMiniMission(this)
+                MavicMiniMission(
+                    waypoints,
+                    finishedAction,
+                    headingMode,
+                    autoFlightSpeed,
+                    maxFlightSpeed,
+                    flightPathMode
+                )
             else {
-                //TODO maybe handle this a better way
                 null
             }
         }
 
         private fun isValid(): Boolean {
             var isValid = true
-            for (waypoint in waypointList) {
+            for (waypoint in waypoints) {
                 if (!checkGpsCoordination(
                         waypoint.coordinate.latitude,
                         waypoint.coordinate.longitude
@@ -65,6 +87,10 @@ class MavicMiniMission(builder: Builder) {
                     isValid = false
                 }
             }
+
+            if (autoFlightSpeed > 15 || autoFlightSpeed < -15 || maxFlightSpeed < 2 || maxFlightSpeed > 15)
+                isValid = false
+
             return isValid
         }
 
