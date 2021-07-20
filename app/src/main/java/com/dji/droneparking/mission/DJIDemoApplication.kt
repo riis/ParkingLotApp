@@ -1,4 +1,4 @@
-package com.dji.droneparking
+package com.dji.droneparking.mission
 
 import dji.sdk.base.BaseProduct
 import dji.sdk.camera.Camera
@@ -25,7 +25,7 @@ object DJIDemoApplication {
     }
 
     fun getFlightController(): FlightController? {
-        val product = getProductInstance()?: return null
+        val product = getProductInstance() ?: return null
         if (product.isConnected) {
             if (product is Aircraft) {
                 return product.flightController

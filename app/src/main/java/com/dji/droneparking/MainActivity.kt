@@ -6,10 +6,16 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.*
+import com.dji.droneparking.mission.DJIDemoApplication
 import com.dji.droneparking.mission.MavicMiniMission
 import com.dji.droneparking.mission.MavicMiniMissionOperator
+import com.dji.droneparking.mission.Tools.showToast
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.*
+import dji.common.flightcontroller.virtualstick.FlightCoordinateSystem
+import dji.common.flightcontroller.virtualstick.RollPitchControlMode
+import dji.common.flightcontroller.virtualstick.VerticalControlMode
+import dji.common.flightcontroller.virtualstick.YawControlMode
 import dji.common.mission.waypoint.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -86,7 +92,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
 
         } else {
-            setResultToToast("Cannot Add Waypoint")
+            showToast(this, "Cannot Add Waypoint")
         }
     }
 
@@ -123,6 +129,13 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
     private fun initFlightController() {
         DJIDemoApplication.getFlightController()?.let { flightController ->
+
+            flightController.setVirtualStickModeEnabled(true, null)
+            flightController.rollPitchControlMode = RollPitchControlMode.VELOCITY
+            flightController.yawControlMode = YawControlMode.ANGLE
+            flightController.verticalControlMode = VerticalControlMode.POSITION
+            flightController.rollPitchCoordinateSystem = FlightCoordinateSystem.GROUND
+
             flightController.setStateCallback { flightControllerState ->
                 droneLocationLat = flightControllerState.aircraftLocation.latitude
                 droneLocationLng = flightControllerState.aircraftLocation.longitude
@@ -185,22 +198,22 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
     private fun startWaypointMission() {
         getWaypointMissionOperator()?.startMission { error ->
-            setResultToToast("Mission Start: " + if (error == null) "Successfully" else error.description)
+            showToast(this, "Mission Start: " + if (error == null) "Successfully" else error.description)
         }
     }
 
     private fun stopWaypointMission() {
         getWaypointMissionOperator()?.stopMission { error ->
-            setResultToToast("Mission Stop: " + if (error == null) "Successfully" else error.description)
+            showToast(this, "Mission Stop: " + if (error == null) "Successfully" else error.description)
         }
     }
 
     private fun uploadWaypointMission() {
         getWaypointMissionOperator()!!.uploadMission { error ->
             if (error == null) {
-                setResultToToast("Mission upload successfully!")
+                showToast(this, "Mission upload successfully!")
             } else {
-                setResultToToast("Mission upload failed, error: " + error.description + " retrying...")
+                showToast(this, "Mission upload failed, error: " + error.description + " retrying...")
                 getWaypointMissionOperator()?.retryUploadMission(null)
             }
         }
@@ -285,14 +298,14 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
                 for (i in builder.waypointList.indices) {
                     builder.waypointList[i].altitude = altitude
                 }
-                setResultToToast("Set Waypoint attitude successfully")
+                showToast(this, "Set Waypoint attitude successfully")
             }
             getWaypointMissionOperator()?.let { operator ->
                 val error = operator.loadMission(builder.build())
                 if (error == null) {
-                    setResultToToast("loadWaypoint succeeded")
+                    showToast(this, "loadWaypoint succeeded")
                 } else {
-                    setResultToToast("loadWaypoint failed " + error.description)
+                    showToast(this, "loadWaypoint failed " + error.description)
                 }
             }
         }
@@ -334,13 +347,9 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         gMap?.moveCamera(cameraUpdate)
     }
 
-    private fun setResultToToast(string: String) {
-        runOnUiThread { Toast.makeText(this, string, Toast.LENGTH_SHORT).show() }
-    }
-
     private fun getWaypointMissionOperator(): MavicMiniMissionOperator? {
         if (instance == null) {
-            instance = MavicMiniMissionOperator()
+            instance = MavicMiniMissionOperator(this)
         }
 
         return instance
