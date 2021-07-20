@@ -260,7 +260,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
                 Log.e(TAG, "mHeadingMode $headingMode")
                 configWayPointMission()
             }
-            .setNegativeButton("Cancel") { dialog, id -> dialog.cancel() }
+            .setNegativeButton("Cancel") { dialog, _ -> dialog.cancel() }
             .create()
             .show()
     }
