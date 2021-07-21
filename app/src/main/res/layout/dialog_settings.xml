@@ -122,4 +122,56 @@
                 android:text="BackTo 1st"/>
         </RadioGroup>
     </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="10dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Heading:"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal" >
+        <RadioGroup
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:id="@+id/heading"
+            android:layout_gravity="center_horizontal">
+            <RadioButton
+                android:id="@+id/headingNext"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="5pt"
+                android:text="Auto"/>
+            <RadioButton
+                android:id="@+id/headingInitDirec"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="5pt"
+                android:text="Initial"/>
+            <RadioButton
+                android:id="@+id/headingRC"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="5pt"
+                android:text="RC Control"/>
+            <RadioButton
+                android:id="@+id/headingWP"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="5pt"
+                android:text="Use Waypoint"/>
+        </RadioGroup>
+    </LinearLayout>
+
 </LinearLayout>

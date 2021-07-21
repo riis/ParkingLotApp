@@ -7,7 +7,6 @@ import android.util.Log
 import android.view.View
 import android.widget.*
 import com.dji.droneparking.mission.DJIDemoApplication
-import com.dji.droneparking.mission.MavicMiniMission
 import com.dji.droneparking.mission.MavicMiniMissionOperator
 import com.dji.droneparking.mission.Tools.showToast
 import com.google.android.gms.maps.*
@@ -31,7 +30,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
     companion object {
         const val TAG = "GSDemoActivity"
-        private var waypointMissionBuilder: MavicMiniMission.Builder? = null
+        private var waypointMissionBuilder: WaypointMission.Builder? = null
 
         fun checkGpsCoordination(latitude: Double, longitude: Double): Boolean {
             return latitude > -90 && latitude < 90 && longitude > -180 && longitude < 180 && latitude != 0.0 && longitude != 0.0
@@ -82,7 +81,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
             if (waypointMissionBuilder == null) {
                 waypointMissionBuilder =
-                    MavicMiniMission.Builder()
+                    WaypointMission.Builder()
                         .also { builder ->
                             builder.addWaypoint(waypoint)
                         }
@@ -125,6 +124,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         config.setOnClickListener(this)
         start.setOnClickListener(this)
         stop.setOnClickListener(this)
+        upload.setOnClickListener(this)
     }
 
     private fun initFlightController() {
@@ -209,7 +209,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     }
 
     private fun uploadWaypointMission() {
-        getWaypointMissionOperator()!!.uploadMission { error ->
+        getWaypointMissionOperator()?.uploadMission { error ->
             if (error == null) {
                 showToast(this, "Mission upload successfully!")
             } else {
@@ -226,6 +226,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         val speedRG = settingsView.findViewById<View>(R.id.speed) as RadioGroup
         val actionAfterFinishedRG =
             settingsView.findViewById<View>(R.id.actionAfterFinished) as RadioGroup
+        val headingRG = settingsView.findViewById<View>(R.id.heading) as RadioGroup
 
         speedRG.setOnCheckedChangeListener { _, checkedId ->
             Log.d(TAG, "Select speed")
@@ -261,6 +262,26 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             }
         }
 
+        headingRG.setOnCheckedChangeListener { _, checkedId ->
+
+            Log.d(TAG, "Select heading")
+            when (checkedId) {
+                R.id.headingNext -> {
+                    headingMode = WaypointMissionHeadingMode.AUTO
+                }
+                R.id.headingInitDirec -> {
+                    headingMode = WaypointMissionHeadingMode.USING_INITIAL_DIRECTION
+                }
+                R.id.headingRC -> {
+                    headingMode = WaypointMissionHeadingMode.CONTROL_BY_REMOTE_CONTROLLER
+                }
+                R.id.headingWP -> {
+                    headingMode = WaypointMissionHeadingMode.USING_WAYPOINT_HEADING
+                }
+
+            }
+        }
+
         AlertDialog.Builder(this)
             .setTitle("")
             .setView(settingsView)
@@ -280,7 +301,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
     private fun configWayPointMission() {
         if (waypointMissionBuilder == null) {
-            waypointMissionBuilder = MavicMiniMission.Builder().finishedAction(finishedAction)
+            waypointMissionBuilder = WaypointMission.Builder().finishedAction(finishedAction)
                 .headingMode(headingMode)
                 .autoFlightSpeed(speed)
                 .maxFlightSpeed(speed)
@@ -294,7 +315,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
                 .maxFlightSpeed(speed)
                 .flightPathMode(WaypointMissionFlightPathMode.NORMAL)
 
-            if (builder.waypointList.isNotEmpty()) {
+            if (builder.waypointList.size > 0) {
                 for (i in builder.waypointList.indices) {
                     builder.waypointList[i].altitude = altitude
                 }
@@ -348,9 +369,9 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     }
 
     private fun getWaypointMissionOperator(): MavicMiniMissionOperator? {
-        if (instance == null) {
+
+        if (instance == null)
             instance = MavicMiniMissionOperator(this)
-        }
 
         return instance
     }
