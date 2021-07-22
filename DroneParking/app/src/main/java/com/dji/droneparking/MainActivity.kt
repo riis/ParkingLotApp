@@ -153,6 +153,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         }
 
         val pos = LatLng(droneLocationLat, droneLocationLng)
+//        Log.d(TAG, "Longitude: $droneLocationLat, Latitude: $droneLocationLng\n")
         val markerOptions = MarkerOptions()
             .position(pos)
             .icon(BitmapDescriptorFactory.fromResource(R.drawable.aircraft))
