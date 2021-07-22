@@ -1,8 +1,12 @@
 package com.dji.droneparking.mission
 
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import com.dji.droneparking.mission.Tools.showToast
 import dji.common.error.DJIError
 import dji.common.error.DJIMissionError
@@ -15,6 +19,7 @@ import dji.common.model.LocationCoordinate2D
 import dji.common.util.CommonCallbacks
 import java.util.*
 
+private const val TAG = "MavicMiniMissionOperator"
 class MavicMiniMissionOperator(private val context: Context) {
 
     private var state: MissionState = WaypointMissionState.UNKNOWN
@@ -26,6 +31,7 @@ class MavicMiniMissionOperator(private val context: Context) {
         get() = state
 
     private lateinit var currentDroneLocation: LocationCoordinate2D
+    private var droneLocationLiveData: MutableLiveData<LocationCoordinate2D> = MutableLiveData()
     private lateinit var currentWaypoint: Waypoint
     private val sendDataTimer = Timer()
     private lateinit var sendDataTask: SendDataTask
@@ -51,6 +57,11 @@ class MavicMiniMissionOperator(private val context: Context) {
                     flightControllerState.aircraftLocation.latitude,
                     flightControllerState.aircraftLocation.longitude
                 )
+
+
+//                context.run {
+                droneLocationLiveData.postValue(currentDroneLocation)
+//                }
 
                 locationCallback(currentDroneLocation)
             }
@@ -109,13 +120,23 @@ class MavicMiniMissionOperator(private val context: Context) {
         }
     }
 
+    @SuppressLint("LongLogTag")
     private fun executeMission() {
         this.state = WaypointMissionState.EXECUTION_STARTING
         for (waypoint in waypoints) {
             this.state = WaypointMissionState.EXECUTING
             currentWaypoint = waypoint
-            goToLatitude()
-            goToLongitude()
+
+            droneLocationLiveData.observeForever {
+                Log.d(TAG, it.toString())
+//                val difference = currentWaypoint.coordinate.longitude - it.longitude
+//                if (difference < 0) {
+//                    goToLongitude(-currentWaypoint.speed)
+//                } else {
+//                    goToLongitude(currentWaypoint.speed)
+//                }
+            }
+
             waypoints.remove(waypoint)
         }
     }
@@ -127,9 +148,9 @@ class MavicMiniMissionOperator(private val context: Context) {
 
     }
 
-    private fun goToLongitude() {
+    private fun goToLongitude(roll: Float) {
         sendDataTask =
-            SendDataTask(-5f, 0f, 0f, currentWaypoint.altitude)
+            SendDataTask(0f, roll, 0f, currentWaypoint.altitude)
         sendDataTimer.schedule(sendDataTask, 0, 200)
 
 
