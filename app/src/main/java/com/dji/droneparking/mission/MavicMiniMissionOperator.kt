@@ -119,23 +119,21 @@ class MavicMiniMissionOperator(private val context: Context) {
             waypoints.remove(waypoint)
         }
     }
+
     private fun goToLatitude() {
-        while (true) {
-            sendDataTask =
-                SendDataTask(-5f, 0f, 0f, currentWaypoint.altitude)
-            sendDataTimer.schedule(sendDataTask, 0, 200)
-        }
+        sendDataTask =
+            SendDataTask(-5f, 0f, 0f, currentWaypoint.altitude)
+        sendDataTimer.schedule(sendDataTask, 0, 200)
+
     }
 
     private fun goToLongitude() {
-        while (true) {
-            sendDataTask =
-                SendDataTask(-5f, 0f, 0f, currentWaypoint.altitude)
-            sendDataTimer.schedule(sendDataTask, 0, 200)
-        }
+        sendDataTask =
+            SendDataTask(-5f, 0f, 0f, currentWaypoint.altitude)
+        sendDataTimer.schedule(sendDataTask, 0, 200)
+
 
     }
-
 
 
     fun resumeMission() {
