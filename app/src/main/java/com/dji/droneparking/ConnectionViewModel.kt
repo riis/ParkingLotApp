@@ -24,7 +24,7 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
             override fun onRegister(error: DJIError?) {
                 if (error == DJISDKError.REGISTRATION_SUCCESS) {
                     Log.i(ConnectionActivity.TAG, "onRegister: Registration Successful")
-                    DJISDKManager.getInstance().enableBridgeModeWithBridgeAppIP(BuildConfig.IP_ADDRESS)
+//                    DJISDKManager.getInstance().enableBridgeModeWithBridgeAppIP(BuildConfig.IP_ADDRESS)
                 } else {
                     Log.i(ConnectionActivity.TAG, "onRegister: Registration Failed - ${error?.description}")
                 }
