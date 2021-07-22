@@ -6,16 +6,12 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.*
-import com.dji.droneparking.mission.DJIDemoApplication
 import com.dji.droneparking.mission.MavicMiniMissionOperator
 import com.dji.droneparking.mission.Tools.showToast
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.*
-import dji.common.flightcontroller.virtualstick.FlightCoordinateSystem
-import dji.common.flightcontroller.virtualstick.RollPitchControlMode
-import dji.common.flightcontroller.virtualstick.VerticalControlMode
-import dji.common.flightcontroller.virtualstick.YawControlMode
 import dji.common.mission.waypoint.*
+import dji.common.model.LocationCoordinate2D
 import java.util.concurrent.ConcurrentHashMap
 
 class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapReadyCallback,
@@ -63,6 +59,11 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         mapFragment.onCreate(savedInstanceState)
         mapFragment.getMapAsync(this)
 
+        getWaypointMissionOperator()?.setLocationListener { location ->
+            droneLocationLat = location.latitude
+            droneLocationLng = location.longitude
+            updateDroneLocation()
+        }
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -104,10 +105,6 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        initFlightController()
-    }
 
     private fun initUi() {
         locate = findViewById(R.id.locate)
@@ -127,39 +124,23 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         upload.setOnClickListener(this)
     }
 
-    private fun initFlightController() {
-        DJIDemoApplication.getFlightController()?.let { flightController ->
-
-            flightController.setVirtualStickModeEnabled(true, null)
-            flightController.rollPitchControlMode = RollPitchControlMode.VELOCITY
-            flightController.yawControlMode = YawControlMode.ANGLE
-            flightController.verticalControlMode = VerticalControlMode.POSITION
-            flightController.rollPitchCoordinateSystem = FlightCoordinateSystem.GROUND
-
-            flightController.setStateCallback { flightControllerState ->
-                droneLocationLat = flightControllerState.aircraftLocation.latitude
-                droneLocationLng = flightControllerState.aircraftLocation.longitude
-                runOnUiThread {
-                    updateDroneLocation()
-                }
-            }
-        }
-    }
-
     private fun updateDroneLocation() {
-
-        if (droneLocationLat.isNaN() || droneLocationLng.isNaN()) {
-            return
-        }
-
-        val pos = LatLng(droneLocationLat, droneLocationLng)
-        val markerOptions = MarkerOptions()
-            .position(pos)
-            .icon(BitmapDescriptorFactory.fromResource(R.drawable.aircraft))
         runOnUiThread {
-            droneMarker?.remove()
-            if (checkGpsCoordination(droneLocationLat, droneLocationLng)) {
-                droneMarker = gMap?.addMarker(markerOptions)
+
+            if (droneLocationLat.isNaN() || droneLocationLng.isNaN()) {
+                return@runOnUiThread
+            }
+
+            val pos = LatLng(droneLocationLat, droneLocationLng)
+
+            val markerOptions = MarkerOptions()
+                .position(pos)
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.aircraft))
+            runOnUiThread {
+                droneMarker?.remove()
+                if (checkGpsCoordination(droneLocationLat, droneLocationLng)) {
+                    droneMarker = gMap?.addMarker(markerOptions)
+                }
             }
         }
     }

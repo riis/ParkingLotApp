@@ -6,11 +6,12 @@ import android.content.Context
 import com.dji.droneparking.mission.Tools.showToast
 import dji.common.error.DJIError
 import dji.common.error.DJIMissionError
-import dji.common.flightcontroller.virtualstick.FlightControlData
+import dji.common.flightcontroller.virtualstick.*
 import dji.common.mission.MissionState
 import dji.common.mission.waypoint.Waypoint
 import dji.common.mission.waypoint.WaypointMission
 import dji.common.mission.waypoint.WaypointMissionState
+import dji.common.model.LocationCoordinate2D
 import dji.common.util.CommonCallbacks
 import java.util.*
 
@@ -19,12 +20,46 @@ class MavicMiniMissionOperator(private val context: Context) {
     private var state: MissionState = WaypointMissionState.UNKNOWN
     private lateinit var mission: WaypointMission
     private lateinit var waypoints: MutableList<Waypoint>
+
+
     val currentState: MissionState
         get() = state
 
-    lateinit var currentWaypoint: Waypoint
-    private lateinit var sendDataTimer: Timer
+    private lateinit var currentDroneLocation: LocationCoordinate2D
+    private lateinit var currentWaypoint: Waypoint
+    private val sendDataTimer = Timer()
     private lateinit var sendDataTask: SendDataTask
+
+    private lateinit var locationCallback: (LocationCoordinate2D) -> Unit
+
+    init {
+        initFlightController()
+    }
+
+    private fun initFlightController() {
+        DJIDemoApplication.getFlightController()?.let { flightController ->
+
+            flightController.setVirtualStickModeEnabled(true, null)
+            flightController.rollPitchControlMode = RollPitchControlMode.VELOCITY
+            flightController.yawControlMode = YawControlMode.ANGLE
+            flightController.verticalControlMode = VerticalControlMode.POSITION
+            flightController.rollPitchCoordinateSystem = FlightCoordinateSystem.GROUND
+
+            flightController.setStateCallback { flightControllerState ->
+
+                currentDroneLocation = LocationCoordinate2D(
+                    flightControllerState.aircraftLocation.latitude,
+                    flightControllerState.aircraftLocation.longitude
+                )
+
+                locationCallback(currentDroneLocation)
+            }
+        }
+    }
+
+    fun setLocationListener(callback: (LocationCoordinate2D) -> Unit) {
+        this.locationCallback = callback
+    }
 
     fun loadMission(mission: WaypointMission?): DJIError? {
         return if (mission == null) {
@@ -57,15 +92,15 @@ class MavicMiniMissionOperator(private val context: Context) {
      */
 
     fun startMission(callback: CommonCallbacks.CompletionCallback<DJIError>?) {
-        if (this.state == WaypointMissionState.READY_TO_START) {
 
+        if (this.state == WaypointMissionState.READY_TO_START) {
             showToast(context as Activity, "Starting to Takeoff")
             DJIDemoApplication.getFlightController()?.startTakeoff { error ->
                 if (error == null) {
                     callback?.onResult(null)
                     this.state = WaypointMissionState.READY_TO_EXECUTE
                     executeMission()
-                }else{
+                } else {
                     callback?.onResult(error)
                 }
             }
@@ -84,26 +119,23 @@ class MavicMiniMissionOperator(private val context: Context) {
             waypoints.remove(waypoint)
         }
     }
+    private fun goToLatitude() {
+        while (true) {
+            sendDataTask =
+                SendDataTask(-5f, 0f, 0f, currentWaypoint.altitude)
+            sendDataTimer.schedule(sendDataTask, 0, 200)
+        }
+    }
 
     private fun goToLongitude() {
         while (true) {
             sendDataTask =
                 SendDataTask(-5f, 0f, 0f, currentWaypoint.altitude)
-
-            sendDataTimer = Timer()
             sendDataTimer.schedule(sendDataTask, 0, 200)
         }
 
     }
 
-    private fun goToLatitude() {
-        while (true) {
-            sendDataTask =
-                SendDataTask(-5f, 0f, 0f, currentWaypoint.altitude)
-            sendDataTimer = Timer()
-            sendDataTimer.schedule(sendDataTask, 0, 200)
-        }
-    }
 
 
     fun resumeMission() {
@@ -132,7 +164,6 @@ class MavicMiniMissionOperator(private val context: Context) {
 
 
         override fun run() {
-            DJIDemoApplication.getFlightController()?.setVirtualStickModeEnabled(true, null)
             DJIDemoApplication.getFlightController()?.sendVirtualStickFlightControlData(
                 FlightControlData(
                     mPitch,
