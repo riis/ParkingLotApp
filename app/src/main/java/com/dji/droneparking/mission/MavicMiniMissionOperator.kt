@@ -117,10 +117,11 @@ class MavicMiniMissionOperator(private val context: Context) {
                         Log.d(TAG, it.toString())
                         val difference = currentWaypoint.coordinate.longitude - it.longitude
                         Log.d(TAG, "Difference: $difference")
+                        sendDataTimer.cancel()
                         if (difference < 0) {
-                            goToLongitude(-1f)
-                        } else {
-                            goToLongitude(1f)
+                            goToLongitude(-5f)
+                        } else if (difference > 0) {
+                            goToLongitude(5f)
                         }
                     }
                 }
