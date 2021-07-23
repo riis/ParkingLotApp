@@ -1,12 +1,13 @@
 package com.dji.droneparking.mission
+
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.*
+import androidx.lifecycle.Observer
 import com.dji.droneparking.mission.Tools.showToast
 import dji.common.error.DJIError
 import dji.common.error.DJIMissionError
@@ -21,10 +22,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
+
+
 private const val TAG = "MavicMiniMissionOperator"
-@RequiresApi(Build.VERSION_CODES.P)
-class MavicMiniMissionOperator(private val context: Context) {
+
+class MavicMiniMissionOperator(context: Context) {
+
     private var state: MissionState = WaypointMissionState.UNKNOWN
+    private val activity: AppCompatActivity
     private lateinit var mission: WaypointMission
     private lateinit var waypoints: MutableList<Waypoint>
     val currentState: MissionState
@@ -34,35 +39,38 @@ class MavicMiniMissionOperator(private val context: Context) {
     private lateinit var currentWaypoint: Waypoint
     private var sendDataTimer = Timer()
     private lateinit var sendDataTask: SendDataTask
-    private lateinit var locationCallback: (LocationCoordinate2D) -> Unit
+    private lateinit var onLocationChanged: (LocationCoordinate2D) -> Unit
+
     init {
         initFlightController()
+        activity = context as AppCompatActivity
     }
+
     private fun initFlightController() {
         DJIDemoApplication.getFlightController()?.let { flightController ->
+
             flightController.setVirtualStickModeEnabled(true, null)
             flightController.rollPitchControlMode = RollPitchControlMode.VELOCITY
             flightController.yawControlMode = YawControlMode.ANGLE
             flightController.verticalControlMode = VerticalControlMode.POSITION
             flightController.rollPitchCoordinateSystem = FlightCoordinateSystem.GROUND
+
             flightController.setStateCallback { flightControllerState ->
                 currentDroneLocation = LocationCoordinate2D(
                     flightControllerState.aircraftLocation.latitude,
                     flightControllerState.aircraftLocation.longitude
                 )
 
-                val activity = context as AppCompatActivity
-                activity.lifecycleScope.launch{
-                    withContext(Dispatchers.Main){droneLocationLiveData.value = currentDroneLocation}
-                }
-
-                locationCallback(currentDroneLocation)
+                droneLocationLiveData.postValue(currentDroneLocation)
+                onLocationChanged(currentDroneLocation)
             }
         }
     }
-    fun setLocationListener(callback: (LocationCoordinate2D) -> Unit) {
-        this.locationCallback = callback
+
+    fun setOnLocationChangedListener(callback: (LocationCoordinate2D) -> Unit) {
+        this.onLocationChanged = callback
     }
+
     fun loadMission(mission: WaypointMission?): DJIError? {
         return if (mission == null) {
             this.state = WaypointMissionState.NOT_READY
@@ -74,6 +82,7 @@ class MavicMiniMissionOperator(private val context: Context) {
             null
         }
     }
+
     fun uploadMission(callback: CommonCallbacks.CompletionCallback<DJIMissionError>?) {
         if (this.state == WaypointMissionState.READY_TO_UPLOAD) {
             this.state = WaypointMissionState.READY_TO_START
@@ -83,16 +92,18 @@ class MavicMiniMissionOperator(private val context: Context) {
             callback?.onResult(DJIMissionError.UPLOADING_WAYPOINT)
         }
     }
+
     /***********************
      * Roll: POSITIVE is SOUTH, NEGATIVE is NORTH, Range: [-30, 30]
      * Pitch: POSITIVE is EAST, NEGATIVE is WEST, Range: [-30, 30]
      * YAW: POSITIVE is RIGHT, NEGATIVE is LEFT, Range: [-360, 360]
      * THROTTLE: UPWARDS MOVEMENT
      */
+
     fun startMission(callback: CommonCallbacks.CompletionCallback<DJIError>?) {
         if (this.state == WaypointMissionState.READY_TO_START) {
 
-            showToast(context as Activity, "Starting to Takeoff")
+            showToast(activity, "Starting to Takeoff")
 
             DJIDemoApplication.getFlightController()?.startTakeoff { error ->
                 if (error == null) {
@@ -117,10 +128,9 @@ class MavicMiniMissionOperator(private val context: Context) {
             this.state = WaypointMissionState.EXECUTING
             currentWaypoint = waypoint
 
-            val activity = context as AppCompatActivity
             activity.lifecycleScope.launch {
-                withContext(Dispatchers.Main){
-                    droneLocationLiveData.observe(activity, {
+                withContext(Dispatchers.Main) {
+                    droneLocationLiveData.observe(activity, Observer {
                         Log.d(TAG, it.toString())
                         val difference = currentWaypoint.coordinate.longitude - it.longitude
                         Log.d(TAG, "Difference: $difference")
@@ -138,27 +148,34 @@ class MavicMiniMissionOperator(private val context: Context) {
             waypoints.remove(waypoint)
         }
     }
+
     private fun goToLatitude() {
         sendDataTask =
             SendDataTask(-5f, 0f, 0f, currentWaypoint.altitude)
         sendDataTimer.schedule(sendDataTask, 0, 200)
     }
+
     private fun goToLongitude(pitch: Float) {
         sendDataTask =
             SendDataTask(pitch, 0f, 0f, currentWaypoint.altitude)
         sendDataTimer.schedule(sendDataTask, 0, 200)
     }
+
     fun resumeMission() {
     }
+
     fun pauseMission() {
     }
+
     fun stopMission(callback: CommonCallbacks.CompletionCallback<DJIMissionError>?) {
-        showToast(context as Activity, "trying to land")
+        showToast(activity, "trying to land")
         DJIDemoApplication.getFlightController()?.startLanding(null)
     }
+
     fun retryUploadMission(callback: CommonCallbacks.CompletionCallback<DJIMissionError>?) {
         uploadMission(callback)
     }
+
     class SendDataTask(pitch: Float, roll: Float, yaw: Float, throttle: Float) : TimerTask() {
         private val mPitch = pitch
         private val mRoll = roll

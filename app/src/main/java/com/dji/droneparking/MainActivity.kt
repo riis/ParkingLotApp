@@ -11,7 +11,6 @@ import com.dji.droneparking.mission.Tools.showToast
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.*
 import dji.common.mission.waypoint.*
-import dji.common.model.LocationCoordinate2D
 import java.util.concurrent.ConcurrentHashMap
 
 class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapReadyCallback,
@@ -59,7 +58,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         mapFragment.onCreate(savedInstanceState)
         mapFragment.getMapAsync(this)
 
-        getWaypointMissionOperator()?.setLocationListener { location ->
+        getWaypointMissionOperator()?.setOnLocationChangedListener { location ->
             droneLocationLat = location.latitude
             droneLocationLng = location.longitude
             updateDroneLocation()
@@ -179,13 +178,19 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
     private fun startWaypointMission() {
         getWaypointMissionOperator()?.startMission { error ->
-            showToast(this, "Mission Start: " + if (error == null) "Successfully" else error.description)
+            showToast(
+                this,
+                "Mission Start: " + if (error == null) "Successfully" else error.description
+            )
         }
     }
 
     private fun stopWaypointMission() {
         getWaypointMissionOperator()?.stopMission { error ->
-            showToast(this, "Mission Stop: " + if (error == null) "Successfully" else error.description)
+            showToast(
+                this,
+                "Mission Stop: " + if (error == null) "Successfully" else error.description
+            )
         }
     }
 
@@ -194,7 +199,10 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             if (error == null) {
                 showToast(this, "Mission upload successfully!")
             } else {
-                showToast(this, "Mission upload failed, error: " + error.description + " retrying...")
+                showToast(
+                    this,
+                    "Mission upload failed, error: " + error.description + " retrying..."
+                )
                 getWaypointMissionOperator()?.retryUploadMission(null)
             }
         }
