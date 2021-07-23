@@ -120,7 +120,7 @@ class MavicMiniMissionOperator(private val context: Context) {
             val activity = context as AppCompatActivity
             activity.lifecycleScope.launch {
                 withContext(Dispatchers.Main){
-                    droneLocationLiveData.observeForever {
+                    droneLocationLiveData.observe(activity, {
                         Log.d(TAG, it.toString())
                         val difference = currentWaypoint.coordinate.longitude - it.longitude
                         Log.d(TAG, "Difference: $difference")
@@ -132,7 +132,7 @@ class MavicMiniMissionOperator(private val context: Context) {
                         } else if (difference > 0) {
                             goToLongitude(5f)
                         }
-                    }
+                    })
                 }
             }
             waypoints.remove(waypoint)
