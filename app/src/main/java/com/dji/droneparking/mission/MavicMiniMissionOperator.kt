@@ -2,9 +2,7 @@ package com.dji.droneparking.mission
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.*
 import androidx.lifecycle.Observer
@@ -22,7 +20,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
-import kotlin.math.abs
 
 
 private const val TAG = "MavicMiniMissionOperator"
@@ -40,11 +37,15 @@ class MavicMiniMissionOperator(context: Context) {
     private lateinit var currentWaypoint: Waypoint
     private var sendDataTimer = Timer()
     private lateinit var sendDataTask: SendDataTask
-    private lateinit var onLocationChanged: (LocationCoordinate2D) -> Unit
+    private lateinit var locationListener: LocationListener
 
     init {
         initFlightController()
         activity = context as AppCompatActivity
+    }
+
+    fun interface LocationListener{
+        fun locate(location: LocationCoordinate2D)
     }
 
     private fun initFlightController() {
@@ -63,13 +64,14 @@ class MavicMiniMissionOperator(context: Context) {
                 )
 
                 droneLocationLiveData.postValue(currentDroneLocation)
-                onLocationChanged(currentDroneLocation)
+                locationListener.locate(currentDroneLocation)
+
             }
         }
     }
 
-    fun setOnLocationChangedListener(callback: (LocationCoordinate2D) -> Unit) {
-        this.onLocationChanged = callback
+    fun setLocationListener(listener: LocationListener) {
+        this.locationListener = listener
     }
 
     fun loadMission(mission: WaypointMission?): DJIError? {
@@ -157,8 +159,6 @@ class MavicMiniMissionOperator(context: Context) {
                         }
 
                     })
-
-                    waypoints.remove(waypoint)
                 }
             }
         }

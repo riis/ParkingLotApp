@@ -58,11 +58,12 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         mapFragment.onCreate(savedInstanceState)
         mapFragment.getMapAsync(this)
 
-        getWaypointMissionOperator()?.setOnLocationChangedListener { location ->
+        getWaypointMissionOperator()?.setLocationListener { location ->
             droneLocationLat = location.latitude
             droneLocationLng = location.longitude
             updateDroneLocation()
         }
+
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
