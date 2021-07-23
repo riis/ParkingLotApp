@@ -50,10 +50,12 @@ class MavicMiniMissionOperator(private val context: Context) {
                     flightControllerState.aircraftLocation.latitude,
                     flightControllerState.aircraftLocation.longitude
                 )
+
                 val activity = context as AppCompatActivity
                 activity.lifecycleScope.launch{
                     withContext(Dispatchers.Main){droneLocationLiveData.value = currentDroneLocation}
                 }
+
                 locationCallback(currentDroneLocation)
             }
         }
@@ -89,7 +91,9 @@ class MavicMiniMissionOperator(private val context: Context) {
      */
     fun startMission(callback: CommonCallbacks.CompletionCallback<DJIError>?) {
         if (this.state == WaypointMissionState.READY_TO_START) {
+
             showToast(context as Activity, "Starting to Takeoff")
+
             DJIDemoApplication.getFlightController()?.startTakeoff { error ->
                 if (error == null) {
                     callback?.onResult(null)
@@ -109,8 +113,10 @@ class MavicMiniMissionOperator(private val context: Context) {
     private fun executeMission() {
         this.state = WaypointMissionState.EXECUTION_STARTING
         for (waypoint in waypoints) {
+
             this.state = WaypointMissionState.EXECUTING
             currentWaypoint = waypoint
+
             val activity = context as AppCompatActivity
             activity.lifecycleScope.launch {
                 withContext(Dispatchers.Main){
@@ -118,6 +124,7 @@ class MavicMiniMissionOperator(private val context: Context) {
                         Log.d(TAG, it.toString())
                         val difference = currentWaypoint.coordinate.longitude - it.longitude
                         Log.d(TAG, "Difference: $difference")
+
                         sendDataTimer.cancel()
                         sendDataTimer = Timer()
                         if (difference < 0) {
@@ -131,7 +138,6 @@ class MavicMiniMissionOperator(private val context: Context) {
             waypoints.remove(waypoint)
         }
     }
-
     private fun goToLatitude() {
         sendDataTask =
             SendDataTask(-5f, 0f, 0f, currentWaypoint.altitude)
