@@ -32,7 +32,7 @@ class MavicMiniMissionOperator(private val context: Context) {
     private lateinit var currentDroneLocation: LocationCoordinate2D
     private var droneLocationLiveData: MutableLiveData<LocationCoordinate2D> = MutableLiveData()
     private lateinit var currentWaypoint: Waypoint
-    private val sendDataTimer = Timer()
+    private var sendDataTimer = Timer()
     private lateinit var sendDataTask: SendDataTask
     private lateinit var locationCallback: (LocationCoordinate2D) -> Unit
     init {
@@ -40,15 +40,12 @@ class MavicMiniMissionOperator(private val context: Context) {
     }
     private fun initFlightController() {
         DJIDemoApplication.getFlightController()?.let { flightController ->
-
             flightController.setVirtualStickModeEnabled(true, null)
             flightController.rollPitchControlMode = RollPitchControlMode.VELOCITY
             flightController.yawControlMode = YawControlMode.ANGLE
             flightController.verticalControlMode = VerticalControlMode.POSITION
             flightController.rollPitchCoordinateSystem = FlightCoordinateSystem.GROUND
-
             flightController.setStateCallback { flightControllerState ->
-
                 currentDroneLocation = LocationCoordinate2D(
                     flightControllerState.aircraftLocation.latitude,
                     flightControllerState.aircraftLocation.longitude
@@ -110,6 +107,7 @@ class MavicMiniMissionOperator(private val context: Context) {
             callback?.onResult(DJIMissionError.FAILED)
         }
     }
+
     @SuppressLint("LongLogTag")
     // TODO figure out currentWaypoint.speed issue
     private fun executeMission() {
@@ -126,9 +124,12 @@ class MavicMiniMissionOperator(private val context: Context) {
                         Log.d(TAG, it.toString())
                         val difference = currentWaypoint.coordinate.longitude - it.longitude
                         Log.d(TAG, "Difference: $difference")
+
+                        sendDataTimer.cancel()
+                        sendDataTimer = Timer()
                         if (difference < 0) {
                             goToLongitude(-5f)
-                        } else {
+                        } else if (difference > 0) {
                             goToLongitude(5f)
                         }
                     }
