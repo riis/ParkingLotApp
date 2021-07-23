@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
+import kotlin.math.abs
 
 
 private const val TAG = "MavicMiniMissionOperator"
@@ -122,30 +123,44 @@ class MavicMiniMissionOperator(context: Context) {
     @SuppressLint("LongLogTag")
     // TODO figure out currentWaypoint.speed issue
     private fun executeMission() {
-        this.state = WaypointMissionState.EXECUTION_STARTING
-        for (waypoint in waypoints) {
 
-            this.state = WaypointMissionState.EXECUTING
-            currentWaypoint = waypoint
+        state = WaypointMissionState.EXECUTION_STARTING
 
-            activity.lifecycleScope.launch {
-                withContext(Dispatchers.Main) {
+        activity.lifecycleScope.launch {
+            withContext(Dispatchers.Main) {
+
+                state = WaypointMissionState.EXECUTING
+
+                for (waypoint in waypoints) {
+                    currentWaypoint = waypoint
                     droneLocationLiveData.observe(activity, Observer {
-                        Log.d(TAG, it.toString())
+
                         val difference = currentWaypoint.coordinate.longitude - it.longitude
+
+                        Log.d(TAG, it.toString())
                         Log.d(TAG, "Difference: $difference")
 
                         sendDataTimer.cancel()
                         sendDataTimer = Timer()
-                        if (difference < 0) {
-                            goToLongitude(-5f)
-                        } else if (difference > 0) {
-                            goToLongitude(5f)
+
+                        when {
+//                            abs(difference) < 0.000001 -> {
+//                                goToLongitude(0f)
+//                                waypoints.remove(waypoint)
+//                            }
+                            difference < 0 -> {
+                                goToLongitude(-5f)
+                            }
+                            difference > 0 -> {
+                                goToLongitude(5f)
+                            }
                         }
+
                     })
+
+                    waypoints.remove(waypoint)
                 }
             }
-            waypoints.remove(waypoint)
         }
     }
 
