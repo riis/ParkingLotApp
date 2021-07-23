@@ -32,7 +32,7 @@ class MavicMiniMissionOperator(private val context: Context) {
     private lateinit var currentDroneLocation: LocationCoordinate2D
     private var droneLocationLiveData: MutableLiveData<LocationCoordinate2D> = MutableLiveData()
     private lateinit var currentWaypoint: Waypoint
-    private val sendDataTimer = Timer()
+    private var sendDataTimer = Timer()
     private lateinit var sendDataTask: SendDataTask
     private lateinit var locationCallback: (LocationCoordinate2D) -> Unit
     init {
@@ -103,6 +103,7 @@ class MavicMiniMissionOperator(private val context: Context) {
             callback?.onResult(DJIMissionError.FAILED)
         }
     }
+
     @SuppressLint("LongLogTag")
     // TODO figure out currentWaypoint.speed issue
     private fun executeMission() {
@@ -118,6 +119,7 @@ class MavicMiniMissionOperator(private val context: Context) {
                         val difference = currentWaypoint.coordinate.longitude - it.longitude
                         Log.d(TAG, "Difference: $difference")
                         sendDataTimer.cancel()
+                        sendDataTimer = Timer()
                         if (difference < 0) {
                             goToLongitude(-5f)
                         } else if (difference > 0) {
@@ -129,6 +131,7 @@ class MavicMiniMissionOperator(private val context: Context) {
             waypoints.remove(waypoint)
         }
     }
+
     private fun goToLatitude() {
         sendDataTask =
             SendDataTask(-5f, 0f, 0f, currentWaypoint.altitude)
