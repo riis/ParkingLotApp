@@ -1,11 +1,11 @@
 package com.dji.droneparking
 
 import android.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.*
+import androidx.appcompat.app.AppCompatActivity
 import com.dji.droneparking.mission.MavicMiniMissionOperator
 import com.dji.droneparking.mission.Tools.showToast
 import com.google.android.gms.maps.*

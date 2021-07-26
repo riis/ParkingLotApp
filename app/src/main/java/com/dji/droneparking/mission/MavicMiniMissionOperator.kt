@@ -4,8 +4,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.*
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
+import androidx.lifecycle.lifecycleScope
 import com.dji.droneparking.mission.Tools.showToast
 import dji.common.error.DJIError
 import dji.common.error.DJIMissionError
@@ -146,14 +147,12 @@ class MavicMiniMissionOperator(context: Context) {
                     sendDataTimer = Timer()
 
                     when {
-                        abs(longitudeDiff) < 0.00001 && !travelledLongitude -> {
-                            Log.d(TAG, "Trying to stop longitude")
+                        abs(longitudeDiff) < 0.000003 && !travelledLongitude -> {
                             travelledLongitude = true
                             sendDataTimer.cancel()
                         }
 
-                        abs(latitudeDiff) < 0.00001 && travelledLongitude -> {
-                            Log.d(TAG, "Trying to stop latitude")
+                        abs(latitudeDiff) < 0.000003 && travelledLongitude -> {
                             waypointTracker++
                             if (waypointTracker < waypoints.size) {
                                 currentWaypoint = waypoints[waypointTracker]
