@@ -2,11 +2,11 @@ package com.dji.droneparking
 
 import android.Manifest
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.Observer
 import dji.sdk.sdkmanager.DJISDKManager
@@ -28,7 +28,8 @@ class ConnectionActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_connection)
 
-        ActivityCompat.requestPermissions(this,
+        ActivityCompat.requestPermissions(
+            this,
             arrayOf(
                 Manifest.permission.WRITE_EXTERNAL_STORAGE,
                 Manifest.permission.VIBRATE,
@@ -43,7 +44,8 @@ class ConnectionActivity : AppCompatActivity() {
                 Manifest.permission.READ_EXTERNAL_STORAGE,
                 Manifest.permission.SYSTEM_ALERT_WINDOW,
                 Manifest.permission.READ_PHONE_STATE
-            ), 1)
+            ), 1
+        )
 
         initUI()
         model.registerApp()
@@ -57,7 +59,8 @@ class ConnectionActivity : AppCompatActivity() {
         mTextProduct = findViewById(R.id.text_product_info)
         mBtnOpen = findViewById(R.id.btn_open)
         mVersionTv = findViewById(R.id.textView2)
-        mVersionTv.text = resources.getString(R.string.sdk_version, DJISDKManager.getInstance().sdkVersion)
+        mVersionTv.text =
+            resources.getString(R.string.sdk_version, DJISDKManager.getInstance().sdkVersion)
         mBtnOpen.isEnabled = false
         mBtnOpen.setOnClickListener {
             val intent = Intent(this, MainActivity::class.java)
@@ -70,8 +73,7 @@ class ConnectionActivity : AppCompatActivity() {
             if (isConnected) {
                 mTextConnectionStatus.text = "Status: Connected"
                 mBtnOpen.isEnabled = true
-            }
-            else {
+            } else {
                 mTextConnectionStatus.text = "Status: Disconnected"
                 mBtnOpen.isEnabled = false
             }
