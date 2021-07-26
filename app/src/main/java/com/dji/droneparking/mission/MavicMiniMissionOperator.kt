@@ -154,6 +154,8 @@ class MavicMiniMissionOperator(context: Context) {
                             waypoints.remove(currentWaypoint)
                             if (waypoints.isNotEmpty()) {
                                 currentWaypoint = waypoints[0]
+                            } else {
+                                stopMission(null)
                             }
                             sendDataTimer.cancel()
                         }
