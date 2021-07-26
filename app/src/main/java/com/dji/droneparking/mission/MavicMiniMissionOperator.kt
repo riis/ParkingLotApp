@@ -39,6 +39,7 @@ class MavicMiniMissionOperator(context: Context) {
     private var sendDataTimer = Timer()
     private lateinit var sendDataTask: SendDataTask
     private lateinit var locationListener: LocationListener
+    private var travelledLongitude = false
 
     init {
         initFlightController()
@@ -134,51 +135,62 @@ class MavicMiniMissionOperator(context: Context) {
 
                 state = WaypointMissionState.EXECUTING
 
-//                for (waypoint in waypoints) {
                 currentWaypoint = waypoints[0]
 
                 droneLocationLiveData.observe(activity, Observer {
 
-                    val difference = currentWaypoint.coordinate.longitude - it.longitude
-
-//                        Log.d(TAG, it.toString())
-//                        Log.d(TAG, "Difference: $difference")
+                    val longitudeDiff = currentWaypoint.coordinate.longitude - it.longitude
+                    val latitudeDiff = currentWaypoint.coordinate.latitude - it.latitude
 
                     sendDataTimer.cancel()
                     sendDataTimer = Timer()
 
                     when {
-                        abs(difference) < 0.000001 && abs(difference) > -0.000001 -> {
-                            Log.d(TAG, "Trying to stop lol")
-//                            goToLongitude(0f)
+                        abs(longitudeDiff) < 0.00001 && abs(longitudeDiff) > -0.00001 && !travelledLongitude -> {
+                            Log.d(TAG, "Trying to stop longitude")
+                            travelledLongitude = true
+                            sendDataTimer.cancel()
+                        }
+
+                        abs(latitudeDiff) < 0.00001 && abs(latitudeDiff) > -0.00001 && travelledLongitude -> {
+                            Log.d(TAG, "Trying to stop latitude")
                             waypoints.remove(currentWaypoint)
                             if (waypoints.isNotEmpty()) {
                                 currentWaypoint = waypoints[0]
+                                travelledLongitude = true
                             } else {
                                 stopMission(null)
                             }
+
                             sendDataTimer.cancel()
                         }
-                        difference < 0 -> {
+
+                        longitudeDiff < 0 && !travelledLongitude -> {
                             goToLongitude(-5f)
                         }
-                        difference > 0 -> {
+
+                        longitudeDiff > 0 && !travelledLongitude -> {
                             goToLongitude(5f)
+                        }
+
+                        latitudeDiff < 0 && travelledLongitude -> {
+                            goToLatitude(-5f)
+                        }
+
+                        latitudeDiff > 0 && travelledLongitude -> {
+                            goToLatitude(5f)
                         }
                     }
 
                 })
 
-
-//                    break
-//                }
             }
         }
     }
 
-    private fun goToLatitude() {
+    private fun goToLatitude(roll: Float) {
         sendDataTask =
-            SendDataTask(-5f, 0f, 0f, currentWaypoint.altitude)
+            SendDataTask(0f, roll, 0f, currentWaypoint.altitude)
         sendDataTimer.schedule(sendDataTask, 0, 200)
     }
 
