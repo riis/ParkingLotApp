@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
+import kotlin.math.abs
 
 
 private const val TAG = "MavicMiniMissionOperator"
@@ -133,33 +134,42 @@ class MavicMiniMissionOperator(context: Context) {
 
                 state = WaypointMissionState.EXECUTING
 
-                for (waypoint in waypoints) {
-                    currentWaypoint = waypoint
-                    droneLocationLiveData.observe(activity, Observer {
+//                for (waypoint in waypoints) {
+                currentWaypoint = waypoints[0]
 
-                        val difference = currentWaypoint.coordinate.longitude - it.longitude
+                droneLocationLiveData.observe(activity, Observer {
 
-                        Log.d(TAG, it.toString())
-                        Log.d(TAG, "Difference: $difference")
+                    val difference = currentWaypoint.coordinate.longitude - it.longitude
 
-                        sendDataTimer.cancel()
-                        sendDataTimer = Timer()
+//                        Log.d(TAG, it.toString())
+//                        Log.d(TAG, "Difference: $difference")
 
-                        when {
-//                            abs(difference) < 0.000001 -> {
-//                                goToLongitude(0f)
-//                                waypoints.remove(waypoint)
-//                            }
-                            difference < 0 -> {
-                                goToLongitude(-5f)
+                    sendDataTimer.cancel()
+                    sendDataTimer = Timer()
+
+                    when {
+                        abs(difference) < 0.000001 && abs(difference) > -0.000001 -> {
+                            Log.d(TAG, "Trying to stop lol")
+//                            goToLongitude(0f)
+                            waypoints.remove(currentWaypoint)
+                            if (waypoints.isNotEmpty()) {
+                                currentWaypoint = waypoints[0]
                             }
-                            difference > 0 -> {
-                                goToLongitude(5f)
-                            }
+                            sendDataTimer.cancel()
                         }
+                        difference < 0 -> {
+                            goToLongitude(-5f)
+                        }
+                        difference > 0 -> {
+                            goToLongitude(5f)
+                        }
+                    }
 
-                    })
-                }
+                })
+
+
+//                    break
+//                }
             }
         }
     }
@@ -205,6 +215,8 @@ class MavicMiniMissionOperator(context: Context) {
                     mThrottle
                 ), null
             )
+
+            this.cancel()
         }
     }
 }
