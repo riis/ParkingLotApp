@@ -27,7 +27,7 @@ private const val TAG = "MavicMiniMissionOperator"
 
 class MavicMiniMissionOperator(context: Context) {
 
-    private var state: MissionState = WaypointMissionState.UNKNOWN
+    private var state: MissionState = WaypointMissionState.INITIAL_PHASE
     private val activity: AppCompatActivity
     private lateinit var mission: WaypointMission
     private lateinit var waypoints: MutableList<Waypoint>
@@ -133,14 +133,14 @@ class MavicMiniMissionOperator(context: Context) {
         activity.lifecycleScope.launch {
             withContext(Dispatchers.Main) {
 
-                state = WaypointMissionState.EXECUTING
 
                 currentWaypoint = waypoints[waypointTracker]
 
-                droneLocationLiveData.observe(activity, Observer {
+                droneLocationLiveData.observe(activity, Observer { currentLocation ->
 
-                    val longitudeDiff = currentWaypoint.coordinate.longitude - it.longitude
-                    val latitudeDiff = currentWaypoint.coordinate.latitude - it.latitude
+                    state = WaypointMissionState.EXECUTING
+                    val longitudeDiff = currentWaypoint.coordinate.longitude - currentLocation.longitude
+                    val latitudeDiff = currentWaypoint.coordinate.latitude - currentLocation.latitude
 
                     sendDataTimer.cancel()
                     sendDataTimer = Timer()
@@ -159,7 +159,14 @@ class MavicMiniMissionOperator(context: Context) {
                                 currentWaypoint = waypoints[waypointTracker]
                                 travelledLongitude = false
                             } else {
-                                stopMission(null)
+                                state =  WaypointMissionState.EXECUTION_STOPPING
+                                stopMission { error ->
+                                    state = WaypointMissionState.INITIAL_PHASE
+                                    showToast(
+                                        activity,
+                                        "Mission Ended: " + if (error == null) "Successfully" else error.description
+                                    )
+                                }
                             }
 
                             sendDataTimer.cancel()
@@ -210,7 +217,7 @@ class MavicMiniMissionOperator(context: Context) {
 
     fun stopMission(callback: CommonCallbacks.CompletionCallback<DJIMissionError>?) {
         showToast(activity, "trying to land")
-        DJIDemoApplication.getFlightController()?.startLanding(null)
+        DJIDemoApplication.getFlightController()?.startLanding(callback)
     }
 
     fun retryUploadMission(callback: CommonCallbacks.CompletionCallback<DJIMissionError>?) {
