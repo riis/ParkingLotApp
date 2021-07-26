@@ -157,7 +157,7 @@ class MavicMiniMissionOperator(context: Context) {
                             waypointTracker++
                             if (waypointTracker < waypoints.size) {
                                 currentWaypoint = waypoints[waypointTracker]
-                                travelledLongitude = true
+                                travelledLongitude = false
                             } else {
                                 stopMission(null)
                             }
