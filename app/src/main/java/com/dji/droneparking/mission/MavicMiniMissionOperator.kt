@@ -146,13 +146,13 @@ class MavicMiniMissionOperator(context: Context) {
                     sendDataTimer = Timer()
 
                     when {
-                        abs(longitudeDiff) < 0.00001 && !travelledLongitude -> {
+                        abs(longitudeDiff) < 0.000003 && !travelledLongitude -> {
                             Log.d(TAG, "Trying to stop longitude")
                             travelledLongitude = true
                             sendDataTimer.cancel()
                         }
 
-                        abs(latitudeDiff) < 0.00001 && travelledLongitude -> {
+                        abs(latitudeDiff) < 0.000003 && travelledLongitude -> {
                             Log.d(TAG, "Trying to stop latitude")
                             waypointTracker++
                             if (waypointTracker < waypoints.size) {
