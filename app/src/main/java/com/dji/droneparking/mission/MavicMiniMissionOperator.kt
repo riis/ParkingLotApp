@@ -40,13 +40,14 @@ class MavicMiniMissionOperator(context: Context) {
     private lateinit var sendDataTask: SendDataTask
     private lateinit var locationListener: LocationListener
     private var travelledLongitude = false
+    private var waypointTracker = 0
 
     init {
         initFlightController()
         activity = context as AppCompatActivity
     }
 
-    fun interface LocationListener{
+    fun interface LocationListener {
         fun locate(location: LocationCoordinate2D)
     }
 
@@ -125,7 +126,6 @@ class MavicMiniMissionOperator(context: Context) {
     }
 
     @SuppressLint("LongLogTag")
-    // TODO figure out currentWaypoint.speed issue
     private fun executeMission() {
 
         state = WaypointMissionState.EXECUTION_STARTING
@@ -135,7 +135,7 @@ class MavicMiniMissionOperator(context: Context) {
 
                 state = WaypointMissionState.EXECUTING
 
-                currentWaypoint = waypoints[0]
+                currentWaypoint = waypoints[waypointTracker]
 
                 droneLocationLiveData.observe(activity, Observer {
 
@@ -146,17 +146,17 @@ class MavicMiniMissionOperator(context: Context) {
                     sendDataTimer = Timer()
 
                     when {
-                        abs(longitudeDiff) < 0.00001 && abs(longitudeDiff) > -0.00001 && !travelledLongitude -> {
+                        abs(longitudeDiff) < 0.00001 && !travelledLongitude -> {
                             Log.d(TAG, "Trying to stop longitude")
                             travelledLongitude = true
                             sendDataTimer.cancel()
                         }
 
-                        abs(latitudeDiff) < 0.00001 && abs(latitudeDiff) > -0.00001 && travelledLongitude -> {
+                        abs(latitudeDiff) < 0.00001 && travelledLongitude -> {
                             Log.d(TAG, "Trying to stop latitude")
-                            waypoints.remove(currentWaypoint)
-                            if (waypoints.isNotEmpty()) {
-                                currentWaypoint = waypoints[0]
+                            waypointTracker++
+                            if (waypointTracker < waypoints.size) {
+                                currentWaypoint = waypoints[waypointTracker]
                                 travelledLongitude = true
                             } else {
                                 stopMission(null)
@@ -165,20 +165,20 @@ class MavicMiniMissionOperator(context: Context) {
                             sendDataTimer.cancel()
                         }
 
-                        longitudeDiff < 0 && !travelledLongitude -> {
-                            goToLongitude(-5f)
+                        !travelledLongitude -> {
+                            chooseDirection(
+                                longitudeDiff,
+                                Direction(pitch = mission.autoFlightSpeed),
+                                Direction(pitch = mission.autoFlightSpeed * -1)
+                            )
                         }
 
-                        longitudeDiff > 0 && !travelledLongitude -> {
-                            goToLongitude(5f)
-                        }
-
-                        latitudeDiff < 0 && travelledLongitude -> {
-                            goToLatitude(-5f)
-                        }
-
-                        latitudeDiff > 0 && travelledLongitude -> {
-                            goToLatitude(5f)
+                        travelledLongitude -> {
+                            chooseDirection(
+                                latitudeDiff,
+                                Direction(roll = mission.autoFlightSpeed),
+                                Direction(roll = mission.autoFlightSpeed * -1)
+                            )
                         }
                     }
 
@@ -188,15 +188,17 @@ class MavicMiniMissionOperator(context: Context) {
         }
     }
 
-    private fun goToLatitude(roll: Float) {
-        sendDataTask =
-            SendDataTask(0f, roll, 0f, currentWaypoint.altitude)
-        sendDataTimer.schedule(sendDataTask, 0, 200)
+    private fun chooseDirection(difference: Double, dir1: Direction, dir2: Direction) {
+        if (difference > 0) {
+            move(dir1)
+        } else {
+            move(dir2)
+        }
     }
 
-    private fun goToLongitude(pitch: Float) {
+    private fun move(dir: Direction) {
         sendDataTask =
-            SendDataTask(pitch, 0f, 0f, currentWaypoint.altitude)
+            SendDataTask(dir.pitch, dir.roll, dir.yaw, dir.altitude)
         sendDataTimer.schedule(sendDataTask, 0, 200)
     }
 
@@ -233,4 +235,11 @@ class MavicMiniMissionOperator(context: Context) {
             this.cancel()
         }
     }
+
+    inner class Direction(
+        val pitch: Float = 0f,
+        val roll: Float = 0f,
+        val yaw: Float = 0f,
+        val altitude: Float = currentWaypoint.altitude
+    )
 }
