@@ -10,14 +10,13 @@ import android.view.TextureView
 import android.view.View
 import android.widget.*
 import androidx.cardview.widget.CardView
+import com.dji.droneparking.mission.DJIDemoApplication
 import com.dji.droneparking.mission.MavicMiniMissionOperator
 import com.dji.droneparking.mission.Tools.showToast
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.*
 import dji.common.gimbal.*
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.mapbox.mapboxsdk.style.layers.Property
-import dji.common.camera.SettingsDefinitions
 import dji.common.mission.waypoint.*
 import dji.sdk.gimbal.Gimbal
 import dji.sdk.sdkmanager.DJISDKManager
@@ -28,7 +27,6 @@ import dji.sdk.camera.VideoFeeder
 import dji.sdk.codec.DJICodecManager
 import dji.sdk.products.Aircraft
 import dji.sdk.products.HandHeld
-import dji.thirdparty.io.reactivex.internal.operators.single.SingleDelayWithCompletable
 import java.util.concurrent.ConcurrentHashMap
 
 
@@ -222,7 +220,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
     //Function that initializes the display for the videoSurface TextureView
     private fun initPreviewer() {
-        val product: BaseProduct = getProductInstance() ?: return //gets an instance of the connected DJI product (null if nonexistent)
+        val product: BaseProduct = DJIDemoApplication.getProductInstance() ?: return //gets an instance of the connected DJI product (null if nonexistent)
         //if DJI product is disconnected, alert the user
         if (!product.isConnected) {
             showToast(getString(R.string.disconnected))
@@ -245,7 +243,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
     //Function that unitializes the display for the videoSurface TextureView
     private fun uninitPreviewer() {
-        val camera: Camera = getCameraInstance() ?: return
+        val camera: Camera = DJIDemoApplication.getCameraInstance() ?: return
         VideoFeeder.getInstance().primaryVideoFeed.addVideoDataListener(null)
 
     }
@@ -290,22 +288,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         super.onDestroy()
     }
 
-    //Function used to get the DJI product that is connected to the mobile device
-    private fun getProductInstance(): BaseProduct? {
-        return DJISDKManager.getInstance().product
-    }
 
-    //Function used to get an instance of the camera in use from the DJI product that is directly connected to the mobile device
-    private fun getCameraInstance(): Camera? {
-        if (getProductInstance() == null) return null
-
-        return if (getProductInstance() is Aircraft) {
-            (getProductInstance() as Aircraft).camera
-        } else if (getProductInstance() is HandHeld) {
-            (getProductInstance() as HandHeld).camera
-        } else
-            null
-    }
 
     private fun updateDroneLocation() {
         runOnUiThread {
