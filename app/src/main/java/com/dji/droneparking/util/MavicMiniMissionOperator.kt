@@ -1,16 +1,15 @@
-package com.dji.droneparking.mission
+package com.dji.droneparking.util
 
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Polyline
 import com.google.android.gms.maps.model.PolylineOptions
-import com.dji.droneparking.mission.Tools.showToast
+import com.dji.droneparking.util.Tools.showToast
 import com.google.android.gms.maps.GoogleMap
 import dji.common.error.DJIError
 import dji.common.error.DJIMissionError
@@ -21,6 +20,7 @@ import dji.common.mission.waypoint.WaypointMission
 import dji.common.mission.waypoint.WaypointMissionState
 import dji.common.model.LocationCoordinate2D
 import dji.common.util.CommonCallbacks
+import dji.sdk.mission.waypoint.WaypointMissionOperatorListener
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -32,20 +32,24 @@ private const val TAG = "MavicMiniMissionOperator"
 
 class MavicMiniMissionOperator(context: Context) {
 
-    private var state: MissionState = WaypointMissionState.INITIAL_PHASE
     private val activity: AppCompatActivity
+
+    private var state: MissionState = WaypointMissionState.INITIAL_PHASE
     private lateinit var mission: WaypointMission
     private lateinit var waypoints: MutableList<Waypoint>
-    val currentState: MissionState
-        get() = state
+    private lateinit var currentWaypoint: Waypoint
+
+    private var locationListener: LocationListener? = null
+    private var operatorListener: WaypointMissionOperatorListener? = null
     private lateinit var currentDroneLocation: LocationCoordinate2D
     private var droneLocationLiveData: MutableLiveData<LocationCoordinate2D> = MutableLiveData()
-    private lateinit var currentWaypoint: Waypoint
-    private var sendDataTimer = Timer()
-    private lateinit var sendDataTask: SendDataTask
-    private lateinit var locationListener: LocationListener
+
     private var travelledLongitude = false
     private var waypointTracker = 0
+
+    private var sendDataTimer = Timer()
+    private lateinit var sendDataTask: SendDataTask
+
     private var toggle = false
     private lateinit var polylineOptions: PolylineOptions
     private lateinit var map : GoogleMap
@@ -59,6 +63,7 @@ class MavicMiniMissionOperator(context: Context) {
     fun interface LocationListener {
         fun locate(location: LocationCoordinate2D)
     }
+
 
     fun setMap(map:GoogleMap){
         this.map = map
@@ -80,7 +85,7 @@ class MavicMiniMissionOperator(context: Context) {
                 )
 
                 droneLocationLiveData.postValue(currentDroneLocation)
-                locationListener.locate(currentDroneLocation)
+                locationListener?.locate(currentDroneLocation)
 
             }
         }
@@ -253,6 +258,14 @@ class MavicMiniMissionOperator(context: Context) {
 
     fun retryUploadMission(callback: CommonCallbacks.CompletionCallback<DJIMissionError>?) {
         uploadMission(callback)
+    }
+
+    fun addListener(listener: WaypointMissionOperatorListener) {
+        this.operatorListener = listener
+    }
+
+    fun removeListener(){
+        this.operatorListener = null
     }
 
     class SendDataTask(pitch: Float, roll: Float, yaw: Float, throttle: Float) : TimerTask() {

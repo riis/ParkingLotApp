@@ -8,4 +8,19 @@
     <string name="push_info">Push Info</string>
     <string name="sdk_version">DJI SDK Version: %1$s</string>
     <string name="map_key">Build</string>
+
+    <!--Flight Plan Activity-->
+    <string name="Flight_Planner">Flight Planner</string>
+    <string name="create_flight_plan">Create Flight Plan</string>
+    <string name="cancel_flight_plan">Cancel/Clear Mission</string>
+    <string name="confirm_flight_plan">Start Flight</string>
+    <string name="cancel_flight">Cancel Flight</string>
+    <string name="stitch_btn">Stitch</string>
+    <string name="clear_flight_plan">Clear</string>
+    <!--Flight Plan Activity Dialog Start Up-->
+    <string name="ensure_clear_sd">In order to survey with your drone, you must empty your drone\'s SD card. Would you like to empty it now? Warning: Pressing yes will delete all data on your SD card.</string>
+    <string name="title_clear_sd">Clear SD Card?</string>
+    <string name="no">No</string>
+    <string name="yes">Yes</string>
+
 </resources>
