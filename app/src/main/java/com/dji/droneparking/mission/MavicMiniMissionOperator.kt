@@ -7,7 +7,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Polyline
+import com.google.android.gms.maps.model.PolylineOptions
 import com.dji.droneparking.mission.Tools.showToast
+import com.google.android.gms.maps.GoogleMap
 import dji.common.error.DJIError
 import dji.common.error.DJIMissionError
 import dji.common.flightcontroller.virtualstick.*
@@ -43,6 +47,10 @@ class MavicMiniMissionOperator(context: Context) {
     private lateinit var mLocationListener: LocationListener //uninitialized implementation of LocationListener interface
     private var travelledLongitude = false
     private var waypointTracker = 0
+    private var toggle = false
+    private lateinit var polylineOptions: PolylineOptions
+    private lateinit var map : GoogleMap
+    private lateinit var polyline : Polyline
 
     init {
         initFlightController()
@@ -57,6 +65,10 @@ class MavicMiniMissionOperator(context: Context) {
     }
 
     //initializing the drone's flight controller
+    fun setMap(map:GoogleMap){
+        this.map = map
+    }
+
     private fun initFlightController() {
         DJIDemoApplication.getFlightController()?.let { flightController ->
 
@@ -106,6 +118,12 @@ class MavicMiniMissionOperator(context: Context) {
     fun uploadMission(callback: CommonCallbacks.CompletionCallback<DJIMissionError>?) {
         if (this.state == WaypointMissionState.READY_TO_UPLOAD) {
             this.state = WaypointMissionState.READY_TO_START
+            polylineOptions = PolylineOptions()
+            for (waypoint in waypoints) {
+                val coordinate = LatLng(waypoint.coordinate.latitude, waypoint.coordinate.longitude)
+                polylineOptions.add(coordinate)
+            }
+            polyline = map.addPolyline(polylineOptions)
             callback?.onResult(null)
         } else {
             this.state = WaypointMissionState.NOT_READY
@@ -162,6 +180,7 @@ class MavicMiniMissionOperator(context: Context) {
                         //when the longitude difference becomes insignificant:
                         abs(longitudeDiff) < 0.000003 && !travelledLongitude -> {
                             travelledLongitude = true
+                            Log.i("STATUS", "finished travelling LONGITUDE")
                             sendDataTimer.cancel() //cancel all scheduled data tasks
                         }
                         //when the latitude difference becomes insignificant and there
@@ -169,12 +188,13 @@ class MavicMiniMissionOperator(context: Context) {
                         abs(latitudeDiff) < 0.000003 && travelledLongitude -> {
                             //move to the next waypoint in the waypoints list
                             waypointTracker++
+                            Log.i("STATUS", "finished travelling LATITUDE")
                             if (waypointTracker < waypoints.size) {
                                 currentWaypoint = waypoints[waypointTracker]
                                 travelledLongitude = false
                             //If all waypoints have been reached, stop the mission
                             } else {
-                                state =  WaypointMissionState.EXECUTION_STOPPING
+                                state = WaypointMissionState.EXECUTION_STOPPING
                                 stopMission { error ->
                                     state = WaypointMissionState.INITIAL_PHASE
                                     showToast(

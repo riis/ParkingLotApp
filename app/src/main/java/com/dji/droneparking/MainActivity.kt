@@ -14,10 +14,13 @@ import com.dji.droneparking.mission.MavicMiniMissionOperator
 import com.dji.droneparking.mission.Tools.showToast
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.*
+import dji.common.gimbal.*
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.mapbox.mapboxsdk.style.layers.Property
 import dji.common.camera.SettingsDefinitions
 import dji.common.mission.waypoint.*
+import dji.sdk.gimbal.Gimbal
+import dji.sdk.sdkmanager.DJISDKManager
 import dji.common.product.Model
 import dji.sdk.base.BaseProduct
 import dji.sdk.camera.Camera
@@ -25,9 +28,9 @@ import dji.sdk.camera.VideoFeeder
 import dji.sdk.codec.DJICodecManager
 import dji.sdk.products.Aircraft
 import dji.sdk.products.HandHeld
-import dji.sdk.sdkmanager.DJISDKManager
 import dji.thirdparty.io.reactivex.internal.operators.single.SingleDelayWithCompletable
 import java.util.concurrent.ConcurrentHashMap
+
 
 /**
  * The purpose of this app is to fly a DJI Mavic Mini drone over a parking lot in an automated fashion, have
@@ -73,6 +76,8 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     private var finishedAction = WaypointMissionFinishedAction.NO_ACTION
     private var headingMode = WaypointMissionHeadingMode.AUTO
 
+    private lateinit var gimbal: Gimbal
+
     companion object {
         const val TAG = "GSDemoActivity"
         private var waypointMissionBuilder: WaypointMission.Builder? = null //used to build waypoint missions
@@ -84,6 +89,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
     //Creating the activity
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main) //setting the activity's content from layout
 
@@ -94,6 +100,20 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         mapFragment.onCreate(savedInstanceState)
         mapFragment.getMapAsync(this) //callback when onMapReady() is called
 
+        val rotation = Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).pitch(-90f).build()
+        gimbal = DJISDKManager.getInstance().product.gimbal
+        gimbal.rotate(rotation
+        ) { djiError ->
+            if (djiError == null) {
+                Log.d("STATUS", "rotate gimbal success")
+                Toast.makeText(applicationContext, "rotate gimbal success", Toast.LENGTH_SHORT)
+                    .show()
+            } else {
+                Log.d("STATUS", "rotate gimbal error " + djiError.description)
+                Toast.makeText(applicationContext, djiError.description, Toast.LENGTH_SHORT)
+                    .show()
+            }
+        }
 
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P){
             //get an instance of MavicMiniOperationOperator and set up a listener
@@ -103,6 +123,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
                 updateDroneLocation()
             }
         }
+
 
         // The receivedVideoDataListener receives the raw video data and the size of the data from the DJI product.
         // It then sends this data to the codec manager for decoding.
@@ -135,6 +156,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         this.gMap = googleMap
         gMap?.setOnMapClickListener(this)
         gMap?.mapType = GoogleMap.MAP_TYPE_SATELLITE
+        getWaypointMissionOperator()?.setMap(gMap!!)
     }
 
     override fun onMapClick(point: LatLng) {
@@ -144,6 +166,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             //TODO 'logic to add waypoint'
 
             val waypoint = Waypoint(point.latitude, point.longitude, altitude)
+// Instantiates a new Polygon object and adds points to define a rectangle
 
             if (waypointMissionBuilder == null) {
                 waypointMissionBuilder =
