@@ -1,18 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:tools="http://schemas.android.com/tools"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:background="#FFFFFF"
-        tools:context=".MainActivity">
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
 
     <LinearLayout
+        android:id="@+id/button_grid"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#FFFFFF"
+        android:orientation="vertical"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
 
-        <TextView
+            <TextView
                 android:id="@+id/ConnectStatusTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -20,73 +26,112 @@
                 android:text="Drone Parking Prototype"
                 android:textColor="#000000"
                 android:textSize="21sp" />
-    </LinearLayout>
+        </LinearLayout>
 
-    <LinearLayout
+
+
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
 
-        <Button
+            <Button
                 android:id="@+id/locate"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Locate"
-                android:layout_weight="1" />
+                android:layout_weight="1"
+                android:text="Locate" />
 
-        <Button
+            <Button
                 android:id="@+id/add"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Add"
-                android:layout_weight="1" />
+                android:layout_weight="1"
+                android:text="Add" />
 
-        <Button
+            <Button
                 android:id="@+id/clear"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Clear"
-                android:layout_weight="1" />
-    </LinearLayout>
+                android:layout_weight="1"
+                android:text="Clear" />
+        </LinearLayout>
 
-    <LinearLayout
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
 
-        <Button
+            <Button
                 android:id="@+id/config"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Config"
-                android:layout_weight="1" />
+                android:layout_weight="1"
+                android:text="Config" />
 
-        <Button
+            <Button
                 android:id="@+id/upload"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Upload"
-                android:layout_weight="1" />
+                android:layout_weight="1"
+                android:text="Upload" />
 
-        <Button
+            <Button
                 android:id="@+id/start"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Start"
-                android:layout_weight="1" />
+                android:layout_weight="1"
+                android:text="Start" />
 
-        <Button
+            <Button
                 android:id="@+id/stop"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Stop"
-                android:layout_weight="1" />
+                android:layout_weight="1"
+                android:text="Stop" />
+        </LinearLayout>
+
+
     </LinearLayout>
 
-    <androidx.fragment.app.FragmentContainerView
-            android:id="@+id/map"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            class="com.google.android.gms.maps.SupportMapFragment" />
 
-</LinearLayout>
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/map"
+        class="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@+id/button_grid" />
+
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/card_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <TextureView
+            android:id="@+id/video_previewer_surface"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center" />
+    </androidx.cardview.widget.CardView>
+
+
+
+
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/toggle_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:contentDescription="@string/shows_a_pop_up_window_displaying_the_drone_s_live_camera_feed"
+        android:src="@drawable/ic_linked_camera"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
