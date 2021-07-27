@@ -49,6 +49,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -58,12 +59,12 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         mapFragment.onCreate(savedInstanceState)
         mapFragment.getMapAsync(this)
 
-
         getWaypointMissionOperator()?.setLocationListener { location ->
             droneLocationLat = location.latitude
             droneLocationLng = location.longitude
             updateDroneLocation()
         }
+        
 
     }
 
@@ -71,6 +72,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         this.gMap = googleMap
         gMap?.setOnMapClickListener(this)
         gMap?.mapType = GoogleMap.MAP_TYPE_SATELLITE
+        getWaypointMissionOperator()?.setMap(gMap!!)
     }
 
     override fun onMapClick(point: LatLng) {
@@ -80,6 +82,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             //TODO 'logic to add waypoint'
 
             val waypoint = Waypoint(point.latitude, point.longitude, altitude)
+// Instantiates a new Polygon object and adds points to define a rectangle
 
             if (waypointMissionBuilder == null) {
                 waypointMissionBuilder =
