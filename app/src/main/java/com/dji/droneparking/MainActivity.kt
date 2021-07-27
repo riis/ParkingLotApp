@@ -10,8 +10,12 @@ import com.dji.droneparking.mission.MavicMiniMissionOperator
 import com.dji.droneparking.mission.Tools.showToast
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.*
+import dji.common.gimbal.*
 import dji.common.mission.waypoint.*
+import dji.sdk.gimbal.Gimbal
+import dji.sdk.sdkmanager.DJISDKManager
 import java.util.concurrent.ConcurrentHashMap
+
 
 class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapReadyCallback,
     View.OnClickListener {
@@ -47,8 +51,11 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     private var finishedAction = WaypointMissionFinishedAction.NO_ACTION
     private var headingMode = WaypointMissionHeadingMode.AUTO
 
+    private lateinit var gimbal: Gimbal
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -58,12 +65,27 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         mapFragment.onCreate(savedInstanceState)
         mapFragment.getMapAsync(this)
 
+        val rotation = Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).pitch(-90f).build()
+        gimbal = DJISDKManager.getInstance().product.gimbal
+        gimbal.rotate(rotation
+        ) { djiError ->
+            if (djiError == null) {
+                Log.d("STATUS", "rotate gimbal success")
+                Toast.makeText(applicationContext, "rotate gimbal success", Toast.LENGTH_SHORT)
+                    .show()
+            } else {
+                Log.d("STATUS", "rotate gimbal error " + djiError.description)
+                Toast.makeText(applicationContext, djiError.description, Toast.LENGTH_SHORT)
+                    .show()
+            }
+        }
 
         getWaypointMissionOperator()?.setLocationListener { location ->
             droneLocationLat = location.latitude
             droneLocationLng = location.longitude
             updateDroneLocation()
         }
+        
 
     }
 
@@ -71,6 +93,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         this.gMap = googleMap
         gMap?.setOnMapClickListener(this)
         gMap?.mapType = GoogleMap.MAP_TYPE_SATELLITE
+        getWaypointMissionOperator()?.setMap(gMap!!)
     }
 
     override fun onMapClick(point: LatLng) {
@@ -80,6 +103,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             //TODO 'logic to add waypoint'
 
             val waypoint = Waypoint(point.latitude, point.longitude, altitude)
+// Instantiates a new Polygon object and adds points to define a rectangle
 
             if (waypointMissionBuilder == null) {
                 waypointMissionBuilder =

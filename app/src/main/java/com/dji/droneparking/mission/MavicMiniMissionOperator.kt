@@ -7,7 +7,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Polyline
+import com.google.android.gms.maps.model.PolylineOptions
 import com.dji.droneparking.mission.Tools.showToast
+import com.google.android.gms.maps.GoogleMap
 import dji.common.error.DJIError
 import dji.common.error.DJIMissionError
 import dji.common.flightcontroller.virtualstick.*
@@ -42,6 +46,10 @@ class MavicMiniMissionOperator(context: Context) {
     private lateinit var locationListener: LocationListener
     private var travelledLongitude = false
     private var waypointTracker = 0
+    private var toggle = false
+    private lateinit var polylineOptions: PolylineOptions
+    private lateinit var map : GoogleMap
+    private lateinit var polyline : Polyline
 
     init {
         initFlightController()
@@ -50,6 +58,10 @@ class MavicMiniMissionOperator(context: Context) {
 
     fun interface LocationListener {
         fun locate(location: LocationCoordinate2D)
+    }
+
+    fun setMap(map:GoogleMap){
+        this.map = map
     }
 
     private fun initFlightController() {
@@ -93,6 +105,12 @@ class MavicMiniMissionOperator(context: Context) {
     fun uploadMission(callback: CommonCallbacks.CompletionCallback<DJIMissionError>?) {
         if (this.state == WaypointMissionState.READY_TO_UPLOAD) {
             this.state = WaypointMissionState.READY_TO_START
+            polylineOptions = PolylineOptions()
+            for (waypoint in waypoints) {
+                val coordinate = LatLng(waypoint.coordinate.latitude, waypoint.coordinate.longitude)
+                polylineOptions.add(coordinate)
+            }
+            polyline = map.addPolyline(polylineOptions)
             callback?.onResult(null)
         } else {
             this.state = WaypointMissionState.NOT_READY
@@ -149,13 +167,17 @@ class MavicMiniMissionOperator(context: Context) {
                     sendDataTimer = Timer()
 
                     when {
+                        //END CLAUSE FOR LONGITUDE MOVEMENT
                         abs(longitudeDiff) < 0.000003 && !travelledLongitude -> {
                             travelledLongitude = true
+                            Log.i("STATUS", "finished travelling LONGITUDE")
                             sendDataTimer.cancel()
                         }
 
+                        //END CLAUSE FOR LATITUDE MOVEMENT
                         abs(latitudeDiff) < 0.000003 && travelledLongitude -> {
                             waypointTracker++
+                            Log.i("STATUS", "finished travelling LATITUDE")
                             if (waypointTracker < waypoints.size) {
                                 currentWaypoint = waypoints[waypointTracker]
                                 travelledLongitude = false
@@ -175,7 +197,10 @@ class MavicMiniMissionOperator(context: Context) {
                             sendDataTimer.cancel()
                         }
 
-                        !travelledLongitude -> {
+                        //MOVE IN LONGITUDE DIRECTION
+                        !travelledLongitude -> {//!travelledLongitude
+                            Log.i("STATUS", "LONG")
+                            toggle = true
                             chooseDirection(
                                 longitudeDiff,
                                 Direction(pitch = mission.autoFlightSpeed),
@@ -183,7 +208,10 @@ class MavicMiniMissionOperator(context: Context) {
                             )
                         }
 
-                        travelledLongitude -> {
+                        //MOVE IN LATITUDE DIRECTION IF LONGITUDE IS DONE
+                        travelledLongitude -> {//travelledLongitude
+                            Log.i("STATUS", "LAT")
+                            toggle = false
                             chooseDirection(
                                 latitudeDiff,
                                 Direction(roll = mission.autoFlightSpeed),
