@@ -137,11 +137,13 @@ class MavicMiniMissionOperator(context: Context) {
 
                 currentWaypoint = waypoints[waypointTracker]
 
-                droneLocationLiveData.observe(activity, Observer { currentLocation ->
+                droneLocationLiveData.observe(activity, { currentLocation ->
 
                     state = WaypointMissionState.EXECUTING
-                    val longitudeDiff = currentWaypoint.coordinate.longitude - currentLocation.longitude
-                    val latitudeDiff = currentWaypoint.coordinate.latitude - currentLocation.latitude
+                    val longitudeDiff =
+                        currentWaypoint.coordinate.longitude - currentLocation.longitude
+                    val latitudeDiff =
+                        currentWaypoint.coordinate.latitude - currentLocation.latitude
 
                     sendDataTimer.cancel()
                     sendDataTimer = Timer()
@@ -158,9 +160,11 @@ class MavicMiniMissionOperator(context: Context) {
                                 currentWaypoint = waypoints[waypointTracker]
                                 travelledLongitude = false
                             } else {
-                                state =  WaypointMissionState.EXECUTION_STOPPING
+                                state = WaypointMissionState.EXECUTION_STOPPING
                                 stopMission { error ->
-                                    state = WaypointMissionState.INITIAL_PHASE
+
+                                    if (error == null) state = WaypointMissionState.INITIAL_PHASE
+
                                     showToast(
                                         activity,
                                         "Mission Ended: " + if (error == null) "Successfully" else error.description
