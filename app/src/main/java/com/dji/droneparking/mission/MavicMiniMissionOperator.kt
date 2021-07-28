@@ -23,6 +23,7 @@ import dji.common.util.CommonCallbacks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.lang.Float.max
 import java.util.*
 import kotlin.math.abs
 
@@ -173,13 +174,19 @@ class MavicMiniMissionOperator(context: Context) {
 
                     state = WaypointMissionState.EXECUTING
 
-//                    originalLatitudeDiff = if (abs(latitudeDiff) > originalLatitudeDiff) abs(latitudeDiff) else -1.0
-//                    originalLongitudeDiff = if (abs(longitudeDiff) > originalLongitudeDiff) abs(longitudeDiff) else -1.0
 
                     val longitudeDiff =
                         currentWaypoint.coordinate.longitude - currentLocation.longitude
                     val latitudeDiff =
                         currentWaypoint.coordinate.latitude - currentLocation.latitude
+
+                    if (abs(latitudeDiff) > originalLatitudeDiff) {
+                        originalLatitudeDiff = abs(latitudeDiff)
+                    }
+
+                    if (abs(longitudeDiff) > originalLongitudeDiff) {
+                        originalLongitudeDiff = abs(longitudeDiff)
+                    }
 
                     //terminating the sendDataTimer and creating a new one
                     sendDataTimer.cancel()
@@ -201,6 +208,8 @@ class MavicMiniMissionOperator(context: Context) {
                             if (waypointTracker < waypoints.size) {
                                 currentWaypoint = waypoints[waypointTracker]
                                 travelledLongitude = false
+                                originalLatitudeDiff = -1.0
+                                originalLongitudeDiff = -1.0
                                 //If all waypoints have been reached, stop the mission
                             } else {
                                 state = WaypointMissionState.EXECUTION_STOPPING
@@ -218,31 +227,19 @@ class MavicMiniMissionOperator(context: Context) {
 
                         //MOVE IN LONGITUDE DIRECTION
                         !travelledLongitude -> {//!travelledLongitude
-                            val speed = if (abs(longitudeDiff) > 0.0002) {
-                                mission.autoFlightSpeed
-                            } else {
-                                1.2f
-                            }
-
                             chooseDirection(
                                 longitudeDiff,
-                                Direction(pitch = speed),
-                                Direction(pitch = -speed),
+                                Direction(pitch = kotlin.math.max((mission.autoFlightSpeed * (abs(longitudeDiff) / originalLongitudeDiff)).toFloat(), 1f)),
+                                Direction(pitch = kotlin.math.min( (mission.autoFlightSpeed * -1 * (abs(longitudeDiff) / originalLongitudeDiff)).toFloat(), -1f))
                             )
                         }
 
                         //MOVE IN LATITUDE DIRECTION IF LONGITUDE IS DONE
                         travelledLongitude -> {//travelledLongitude
-                            val speed = if (abs(latitudeDiff) > 0.0002) {
-                                mission.autoFlightSpeed
-                            } else {
-                                1.2f
-                            }
-
                             chooseDirection(
                                 latitudeDiff,
-                                Direction(roll = speed),
-                                Direction(roll = -speed),
+                                Direction(roll = kotlin.math.max((mission.autoFlightSpeed * (abs(latitudeDiff) / originalLatitudeDiff)).toFloat(), 1f)),
+                                Direction(roll = kotlin.math.min( (mission.autoFlightSpeed * -1 * (abs(latitudeDiff) / originalLatitudeDiff)).toFloat(), -1f))
                             )
                         }
                     }
