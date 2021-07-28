@@ -9,4 +9,6 @@
     <string name="sdk_version">DJI SDK Version: %1$s</string>
     <string name="map_key">Build</string>
     <string name="shows_a_pop_up_window_displaying_the_drone_s_live_camera_feed">shows a pop-up window displaying the drone\'s live camera feed</string>
+    <string name="exit">Exit</string>
+    <string name="add">Add</string>
 </resources>

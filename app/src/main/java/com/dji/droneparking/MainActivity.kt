@@ -527,10 +527,10 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     private fun enableDisableAdd() {
         if (!isAdd) {
             isAdd = true
-            add.text = "Exit"
+            add.text = getString(R.string.exit)
         } else {
             isAdd = false
-            add.text = "Add"
+            add.text = getString(R.string.add)
         }
     }
 

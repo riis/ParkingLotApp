@@ -194,14 +194,14 @@ class MavicMiniMissionOperator(context: Context) {
 
                     when {
                         //when the longitude difference becomes insignificant:
-                        abs(longitudeDiff) < 0.000003 && !travelledLongitude -> {
+                        abs(longitudeDiff) < 0.000001 && !travelledLongitude -> {
                             travelledLongitude = true
                             Log.i("STATUS", "finished travelling LONGITUDE")
                             sendDataTimer.cancel() //cancel all scheduled data tasks
                         }
                         //when the latitude difference becomes insignificant and there
                         //... is no longitude difference (current waypoint has been reached):
-                        abs(latitudeDiff) < 0.000003 && travelledLongitude -> {
+                        abs(latitudeDiff) < 0.000001 && travelledLongitude -> {
                             //move to the next waypoint in the waypoints list
                             waypointTracker++
                             Log.i("STATUS", "finished travelling LATITUDE")
@@ -227,19 +227,31 @@ class MavicMiniMissionOperator(context: Context) {
 
                         //MOVE IN LONGITUDE DIRECTION
                         !travelledLongitude -> {//!travelledLongitude
+                            var speed: Float = mission.autoFlightSpeed
+
+                            if (abs(longitudeDiff) / originalLongitudeDiff < 0.3f) {
+                                speed = kotlin.math.max((mission.autoFlightSpeed * (abs(longitudeDiff) / (originalLongitudeDiff * 0.3f))).toFloat(), 1.2f)
+                            }
+
                             chooseDirection(
                                 longitudeDiff,
-                                Direction(pitch = kotlin.math.max((mission.autoFlightSpeed * (abs(longitudeDiff) / originalLongitudeDiff)).toFloat(), 1f)),
-                                Direction(pitch = kotlin.math.min( (mission.autoFlightSpeed * -1 * (abs(longitudeDiff) / originalLongitudeDiff)).toFloat(), -1f))
+                                Direction(pitch = speed),
+                                Direction(pitch = -speed)
                             )
                         }
 
                         //MOVE IN LATITUDE DIRECTION IF LONGITUDE IS DONE
                         travelledLongitude -> {//travelledLongitude
+                            var speed: Float = mission.autoFlightSpeed
+
+                            if (abs(latitudeDiff) / originalLatitudeDiff < 0.3f) {
+                                speed = kotlin.math.max((mission.autoFlightSpeed * (abs(latitudeDiff) / (originalLatitudeDiff * 0.3f))).toFloat(), 1.2f)
+                            }
+
                             chooseDirection(
                                 latitudeDiff,
-                                Direction(roll = kotlin.math.max((mission.autoFlightSpeed * (abs(latitudeDiff) / originalLatitudeDiff)).toFloat(), 1f)),
-                                Direction(roll = kotlin.math.min( (mission.autoFlightSpeed * -1 * (abs(latitudeDiff) / originalLatitudeDiff)).toFloat(), -1f))
+                                Direction(roll = speed),
+                                Direction(roll = -speed)
                             )
                         }
                     }
