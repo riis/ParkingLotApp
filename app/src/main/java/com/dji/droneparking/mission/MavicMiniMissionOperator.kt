@@ -3,6 +3,7 @@ package com.dji.droneparking.mission
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
@@ -26,6 +27,7 @@ import kotlinx.coroutines.withContext
 import java.lang.Float.max
 import java.util.*
 import kotlin.math.abs
+import kotlin.math.pow
 
 
 private const val TAG = "MavicMiniMissionOperator"
@@ -157,6 +159,18 @@ class MavicMiniMissionOperator(context: Context) {
         }
     }
 
+    /*
+ * Calculate the euclidean distance between two points.
+ * Ignore curvature of the earth.
+ *
+ * @param a: The first point
+ * @param b: The second point
+ * @return: The square of the distance between a and b
+ */
+    fun distance(a: LatLng, b: LatLng): Double {
+        return (a.longitude - b.longitude).pow(2.0) + (a.latitude - b.latitude).pow(2.0)
+    }
+
     //Function used to execute the current waypoint mission
     @SuppressLint("LongLogTag")
     private fun executeMission() {
@@ -187,6 +201,13 @@ class MavicMiniMissionOperator(context: Context) {
                     if (abs(longitudeDiff) > originalLongitudeDiff) {
                         originalLongitudeDiff = abs(longitudeDiff)
                     }
+
+                    val droneLocation = LatLng(currentLocation.latitude, currentLocation.longitude)
+                    val pointA = LatLng(waypoints[1].coordinate.latitude, waypoints[1].coordinate.longitude)
+                    val autoStitchDistance = distance(droneLocation, pointA) * 111139
+
+                    Log.i("STATUS", "$autoStitchDistance meters left")
+
 
                     //terminating the sendDataTimer and creating a new one
                     sendDataTimer.cancel()

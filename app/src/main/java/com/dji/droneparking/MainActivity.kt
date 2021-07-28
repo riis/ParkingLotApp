@@ -51,6 +51,8 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     private lateinit var toggleButton: FloatingActionButton
     private lateinit var cardView: CardView
 
+    private lateinit var autoStitch: Button
+
     private var isCameraShowing = false
     private var receivedVideoDataListener: VideoFeeder.VideoDataListener? =
         null //listener that recieves video data coming from the connected DJI product
@@ -173,10 +175,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         if (isAdd) {
             markWaypoint(point)
 
-            //TODO 'logic to add waypoint'
-
             val waypoint = Waypoint(point.latitude, point.longitude, altitude)
-// Instantiates a new Polygon object and adds points to define a rectangle
 
             if (waypointMissionBuilder == null) {
                 waypointMissionBuilder =
@@ -212,6 +211,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         upload = findViewById(R.id.upload)
         start = findViewById(R.id.start)
         stop = findViewById(R.id.stop)
+        autoStitch = findViewById(R.id.autoStitchButton)
 
         videoSurface = findViewById(R.id.video_previewer_surface)
         toggleButton = findViewById(R.id.toggle_button)
@@ -236,6 +236,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         start.setOnClickListener(this)
         stop.setOnClickListener(this)
         upload.setOnClickListener(this)
+        autoStitch.setOnClickListener(this)
     }
 
     //Function that initializes the display for the videoSurface TextureView
@@ -358,8 +359,34 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             R.id.stop -> {
                 stopWaypointMission()
             }
+            R.id.autoStitchButton ->{
+                autoStitchMission()
+            }
             else -> {
             }
+        }
+    }
+
+    private fun autoStitchMission(){
+        val home = LatLng(droneLocationLat, droneLocationLng)
+        markWaypoint(home)
+
+        val point = LatLng(droneLocationLat, droneLocationLng + 0.00018)
+        markWaypoint(point)
+
+        val homePoint = Waypoint(home.latitude, home.longitude, altitude)
+        val waypoint = Waypoint(point.latitude, point.longitude, altitude)
+
+        if (waypointMissionBuilder == null) {
+            waypointMissionBuilder =
+                WaypointMission.Builder()
+                    .also { builder ->
+                        builder.addWaypoint(homePoint)
+                        builder.addWaypoint(waypoint)
+                    }
+        } else {
+            waypointMissionBuilder?.addWaypoint(homePoint)
+            waypointMissionBuilder?.addWaypoint(waypoint)
         }
     }
 

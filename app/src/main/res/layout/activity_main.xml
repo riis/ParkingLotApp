@@ -25,6 +25,13 @@
                     android:text="Drone Parking Prototype"
                     android:textColor="#000000"
                     android:textSize="21sp" />
+
+            <Button
+                android:id="@+id/autoStitchButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Auto Stitch" />
         </LinearLayout>
 
 
