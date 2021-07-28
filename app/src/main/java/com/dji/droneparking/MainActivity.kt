@@ -124,6 +124,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     private fun markWaypoint(point: LatLng) {
         val markerOptions = MarkerOptions()
             .position(point)
+
         gMap?.let {
             val marker = it.addMarker(markerOptions)
             markers.put(markers.size, marker)

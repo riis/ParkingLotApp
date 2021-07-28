@@ -8,6 +8,7 @@
     <string name="push_info">Push Info</string>
     <string name="sdk_version">DJI SDK Version: %1$s</string>
     <string name="map_key">Build</string>
+    <string name="mapbox_access_token">pk.eyJ1Ijoiam9zZWJncyIsImEiOiJja3IzbTl4YWMwMDhwMnBudGcwN285dWExIn0.ztypy24IDPBVQXXrk-cBZg</string>
 
     <!--Flight Plan Activity-->
     <string name="Flight_Planner">Flight Planner</string>
