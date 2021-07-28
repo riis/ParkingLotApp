@@ -5,6 +5,7 @@ import android.graphics.SurfaceTexture
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Build
 import android.os.Bundle
+import android.util.DisplayMetrics
 import android.util.Log
 import android.view.TextureView
 import android.view.View
@@ -28,6 +29,7 @@ import dji.sdk.codec.DJICodecManager
 import dji.sdk.products.Aircraft
 import dji.sdk.products.HandHeld
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.roundToInt
 
 
 /**
@@ -74,6 +76,9 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     private var finishedAction = WaypointMissionFinishedAction.NO_ACTION
     private var headingMode = WaypointMissionHeadingMode.AUTO
 
+    private var screenHeight = 0
+    private var screenWidth = 0
+
     private lateinit var gimbal: Gimbal
 
     companion object {
@@ -90,6 +95,12 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main) //setting the activity's content from layout
+
+        //getting the mobile device screen dimensions
+        val displayMetrics = DisplayMetrics()
+        windowManager.defaultDisplay.getMetrics(displayMetrics)
+        screenWidth = displayMetrics.widthPixels
+        screenHeight = displayMetrics.heightPixels
 
         initUi() //initializing the UI elements
 
@@ -204,6 +215,14 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         videoSurface = findViewById(R.id.video_previewer_surface)
         toggleButton = findViewById(R.id.toggle_button)
         cardView = findViewById(R.id.card_view)
+
+        //setting the video feed to show a 16:9 aspect ratio
+        val temp = (screenWidth / 1.77779).roundToInt()
+        showToast(temp.toString())
+        val videoParams = videoSurface.layoutParams
+        videoParams.height = temp
+        videoSurface.layoutParams = videoParams
+
 
         //Giving videoSurface a listener that checks for when a surface texture is available.
         //The videoSurface will then display the surface texture, which in this case is a camera video stream.
