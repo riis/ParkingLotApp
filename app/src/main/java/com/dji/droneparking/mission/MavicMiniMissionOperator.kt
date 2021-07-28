@@ -7,11 +7,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
+import com.dji.droneparking.mission.Tools.showToast
+import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Polyline
 import com.google.android.gms.maps.model.PolylineOptions
-import com.dji.droneparking.mission.Tools.showToast
-import com.google.android.gms.maps.GoogleMap
 import dji.common.error.DJIError
 import dji.common.error.DJIMissionError
 import dji.common.flightcontroller.virtualstick.*
@@ -46,10 +46,11 @@ class MavicMiniMissionOperator(context: Context) {
     private lateinit var locationListener: LocationListener
     private var travelledLongitude = false
     private var waypointTracker = 0
-    private var toggle = false
     private lateinit var polylineOptions: PolylineOptions
-    private lateinit var map : GoogleMap
-    private lateinit var polyline : Polyline
+    private lateinit var map: GoogleMap
+    private lateinit var polyline: Polyline
+    private var originalLongitudeDiff = -1.0
+    private var originalLatitudeDiff = -1.0
 
     init {
         initFlightController()
@@ -60,7 +61,7 @@ class MavicMiniMissionOperator(context: Context) {
         fun locate(location: LocationCoordinate2D)
     }
 
-    fun setMap(map:GoogleMap){
+    fun setMap(map: GoogleMap) {
         this.map = map
     }
 
@@ -163,6 +164,9 @@ class MavicMiniMissionOperator(context: Context) {
                     val latitudeDiff =
                         currentWaypoint.coordinate.latitude - currentLocation.latitude
 
+//                    originalLatitudeDiff = if (abs(latitudeDiff) > originalLatitudeDiff) abs(latitudeDiff) else -1.0
+//                    originalLongitudeDiff = if (abs(longitudeDiff) > originalLongitudeDiff) abs(longitudeDiff) else -1.0
+
                     sendDataTimer.cancel()
                     sendDataTimer = Timer()
 
@@ -197,23 +201,31 @@ class MavicMiniMissionOperator(context: Context) {
 
                         //MOVE IN LONGITUDE DIRECTION
                         !travelledLongitude -> {//!travelledLongitude
-                            Log.i("STATUS", "LONG")
-                            toggle = true
+                            val speed = if (abs(longitudeDiff) > 0.0002) {
+                                mission.autoFlightSpeed
+                            } else {
+                                1.2f
+                            }
+
                             chooseDirection(
                                 longitudeDiff,
-                                Direction(pitch = mission.autoFlightSpeed),
-                                Direction(pitch = mission.autoFlightSpeed * -1)
+                                Direction(pitch = speed),
+                                Direction(pitch = -speed),
                             )
                         }
 
                         //MOVE IN LATITUDE DIRECTION IF LONGITUDE IS DONE
                         travelledLongitude -> {//travelledLongitude
-                            Log.i("STATUS", "LAT")
-                            toggle = false
+                            val speed = if (abs(latitudeDiff) > 0.0002) {
+                                mission.autoFlightSpeed
+                            } else {
+                                1.2f
+                            }
+
                             chooseDirection(
                                 latitudeDiff,
-                                Direction(roll = mission.autoFlightSpeed),
-                                Direction(roll = mission.autoFlightSpeed * -1)
+                                Direction(roll = speed),
+                                Direction(roll = -speed),
                             )
                         }
                     }
@@ -232,7 +244,9 @@ class MavicMiniMissionOperator(context: Context) {
         }
     }
 
+    @SuppressLint("LongLogTag")
     private fun move(dir: Direction) {
+        Log.d(TAG, "PITCH: ${dir.pitch}, ROLL: ${dir.roll}")
         sendDataTask =
             SendDataTask(dir.pitch, dir.roll, dir.yaw, dir.altitude)
         sendDataTimer.schedule(sendDataTask, 0, 200)

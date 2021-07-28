@@ -67,7 +67,8 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
         val rotation = Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).pitch(-90f).build()
         gimbal = DJISDKManager.getInstance().product.gimbal
-        gimbal.rotate(rotation
+        gimbal.rotate(
+            rotation
         ) { djiError ->
             if (djiError == null) {
                 Log.d("STATUS", "rotate gimbal success")
@@ -85,7 +86,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             droneLocationLng = location.longitude
             updateDroneLocation()
         }
-        
+
 
     }
 
@@ -250,7 +251,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
                     speed = 3.0f
                 }
                 R.id.MidSpeed -> {
-                    speed = 5.0f
+                    speed = 7.0f
                 }
                 R.id.HighSpeed -> {
                     speed = 10.0f
