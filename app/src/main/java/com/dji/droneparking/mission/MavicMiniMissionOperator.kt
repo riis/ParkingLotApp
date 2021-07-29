@@ -2,8 +2,6 @@ package com.dji.droneparking.mission
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
@@ -189,7 +187,17 @@ class MavicMiniMissionOperator(context: Context) {
 
                     state = WaypointMissionState.EXECUTING
 
-                    Log.d("TESTING", "${distance(LatLng(currentWaypoint.coordinate.latitude, currentWaypoint.coordinate.longitude), LatLng(currentLocation.latitude, currentLocation.longitude))}")
+                    Log.d(
+                        "TESTING",
+                        "${
+                            distance(
+                                LatLng(
+                                    currentWaypoint.coordinate.latitude,
+                                    currentWaypoint.coordinate.longitude
+                                ), LatLng(currentLocation.latitude, currentLocation.longitude)
+                            )
+                        }"
+                    )
 
                     val longitudeDiff =
                         currentWaypoint.coordinate.longitude - currentLocation.longitude
@@ -246,9 +254,8 @@ class MavicMiniMissionOperator(context: Context) {
 
                         //MOVE IN LONGITUDE DIRECTION
                         !travelledLongitude -> {//!travelledLongitude
-                            var speed: Float = mission.autoFlightSpeed
 
-                            speed = kotlin.math.max(
+                            val speed = kotlin.math.max(
                                 (mission.autoFlightSpeed * (abs(longitudeDiff) / (originalLongitudeDiff))).toFloat(),
                                 0.5f
                             )
@@ -262,12 +269,11 @@ class MavicMiniMissionOperator(context: Context) {
 
                         //MOVE IN LATITUDE DIRECTION IF LONGITUDE IS DONE
                         travelledLongitude -> {//travelledLongitude
-                            var speed: Float = mission.autoFlightSpeed
 
-                                speed = kotlin.math.max(
-                                    (mission.autoFlightSpeed * (abs(latitudeDiff) / (originalLatitudeDiff))).toFloat(),
-                                    0.5f
-                                )
+                            val speed = kotlin.math.max(
+                                (mission.autoFlightSpeed * (abs(latitudeDiff) / (originalLatitudeDiff))).toFloat(),
+                                0.5f
+                            )
 
                             chooseDirection(
                                 latitudeDiff,
