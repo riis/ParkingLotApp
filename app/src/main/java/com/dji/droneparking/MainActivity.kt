@@ -200,6 +200,8 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             val marker = it.addMarker(markerOptions)
             markers.put(markers.size, marker)
         }
+
+        Log.d("TESTING", "$point")
     }
 
 

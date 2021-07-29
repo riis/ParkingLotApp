@@ -2,8 +2,6 @@ package com.dji.droneparking.mission
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -191,6 +189,17 @@ class MavicMiniMissionOperator(context: Context) {
 
                     state = WaypointMissionState.EXECUTING
 
+                    Log.d(
+                        "TESTING",
+                        "${
+                            distance(
+                                LatLng(
+                                    currentWaypoint.coordinate.latitude,
+                                    currentWaypoint.coordinate.longitude
+                                ), LatLng(currentLocation.latitude, currentLocation.longitude)
+                            )
+                        }"
+                    )
 
                     val longitudeDiff =
                         currentWaypoint.coordinate.longitude - currentLocation.longitude
@@ -221,14 +230,14 @@ class MavicMiniMissionOperator(context: Context) {
 
                     when {
                         //when the longitude difference becomes insignificant:
-                        abs(longitudeDiff) < 0.000001 && !travelledLongitude -> {
+                        abs(longitudeDiff) < 0.000002 && !travelledLongitude -> {
                             travelledLongitude = true
                             Log.i("STATUS", "finished travelling LONGITUDE")
                             sendDataTimer.cancel() //cancel all scheduled data tasks
                         }
                         //when the latitude difference becomes insignificant and there
                         //... is no longitude difference (current waypoint has been reached):
-                        abs(latitudeDiff) < 0.000001 && travelledLongitude -> {
+                        abs(latitudeDiff) < 0.000002 && travelledLongitude -> {
                             //move to the next waypoint in the waypoints list
                             waypointTracker++
                             Log.i("STATUS", "finished travelling LATITUDE")
@@ -237,13 +246,6 @@ class MavicMiniMissionOperator(context: Context) {
                                 travelledLongitude = false
                                 originalLatitudeDiff = -1.0
                                 originalLongitudeDiff = -1.0
-
-                                Handler(Looper.getMainLooper()).postDelayed(
-                                    {
-                                        Log.d(TAG, "I was just stopped")
-                                    },
-                                    1000
-                                )
 
                             } else { //If all waypoints have been reached, stop the mission
                                 state = WaypointMissionState.EXECUTION_STOPPING
@@ -254,6 +256,7 @@ class MavicMiniMissionOperator(context: Context) {
                                         "Mission Ended: " + if (error == null) "Successfully" else error.description
                                     )
                                 }
+                                sendDataTimer.cancel()
                             }
 
                             sendDataTimer.cancel() //cancel all scheduled data tasks
@@ -261,14 +264,11 @@ class MavicMiniMissionOperator(context: Context) {
 
                         //MOVE IN LONGITUDE DIRECTION
                         !travelledLongitude -> {//!travelledLongitude
-                            var speed: Float = mission.autoFlightSpeed
 
-                            if (abs(longitudeDiff) / originalLongitudeDiff < 0.3f) {
-                                speed = kotlin.math.max(
-                                    (mission.autoFlightSpeed * (abs(longitudeDiff) / (originalLongitudeDiff * 0.3f))).toFloat(),
-                                    1.2f
-                                )
-                            }
+                            val speed = kotlin.math.max(
+                                (mission.autoFlightSpeed * (abs(longitudeDiff) / (originalLongitudeDiff))).toFloat(),
+                                0.5f
+                            )
 
                             chooseDirection(
                                 longitudeDiff,
@@ -279,14 +279,11 @@ class MavicMiniMissionOperator(context: Context) {
 
                         //MOVE IN LATITUDE DIRECTION IF LONGITUDE IS DONE
                         travelledLongitude -> {//travelledLongitude
-                            var speed: Float = mission.autoFlightSpeed
 
-                            if (abs(latitudeDiff) / originalLatitudeDiff < 0.3f) {
-                                speed = kotlin.math.max(
-                                    (mission.autoFlightSpeed * (abs(latitudeDiff) / (originalLatitudeDiff * 0.3f))).toFloat(),
-                                    1.2f
-                                )
-                            }
+                            val speed = kotlin.math.max(
+                                (mission.autoFlightSpeed * (abs(latitudeDiff) / (originalLatitudeDiff))).toFloat(),
+                                0.5f
+                            )
 
                             chooseDirection(
                                 latitudeDiff,
