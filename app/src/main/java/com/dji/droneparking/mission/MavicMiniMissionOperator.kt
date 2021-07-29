@@ -2,6 +2,8 @@ package com.dji.droneparking.mission
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -24,7 +26,6 @@ import dji.common.util.CommonCallbacks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.lang.Float.max
 import java.util.*
 import kotlin.math.abs
 import kotlin.math.pow
@@ -231,8 +232,15 @@ class MavicMiniMissionOperator(context: Context) {
                                 travelledLongitude = false
                                 originalLatitudeDiff = -1.0
                                 originalLongitudeDiff = -1.0
-                                //If all waypoints have been reached, stop the mission
-                            } else {
+
+                                Handler(Looper.getMainLooper()).postDelayed(
+                                    {
+                                        Log.d(TAG, "I was just stopped")
+                                    },
+                                    1000
+                                )
+
+                            } else { //If all waypoints have been reached, stop the mission
                                 state = WaypointMissionState.EXECUTION_STOPPING
                                 stopMission { error ->
                                     state = WaypointMissionState.INITIAL_PHASE
@@ -251,7 +259,10 @@ class MavicMiniMissionOperator(context: Context) {
                             var speed: Float = mission.autoFlightSpeed
 
                             if (abs(longitudeDiff) / originalLongitudeDiff < 0.3f) {
-                                speed = kotlin.math.max((mission.autoFlightSpeed * (abs(longitudeDiff) / (originalLongitudeDiff * 0.3f))).toFloat(), 1.2f)
+                                speed = kotlin.math.max(
+                                    (mission.autoFlightSpeed * (abs(longitudeDiff) / (originalLongitudeDiff * 0.3f))).toFloat(),
+                                    1.2f
+                                )
                             }
 
                             chooseDirection(
@@ -266,7 +277,10 @@ class MavicMiniMissionOperator(context: Context) {
                             var speed: Float = mission.autoFlightSpeed
 
                             if (abs(latitudeDiff) / originalLatitudeDiff < 0.3f) {
-                                speed = kotlin.math.max((mission.autoFlightSpeed * (abs(latitudeDiff) / (originalLatitudeDiff * 0.3f))).toFloat(), 1.2f)
+                                speed = kotlin.math.max(
+                                    (mission.autoFlightSpeed * (abs(latitudeDiff) / (originalLatitudeDiff * 0.3f))).toFloat(),
+                                    1.2f
+                                )
                             }
 
                             chooseDirection(
