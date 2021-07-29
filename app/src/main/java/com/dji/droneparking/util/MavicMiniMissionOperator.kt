@@ -2,15 +2,14 @@ package com.dji.droneparking.util
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.Polyline
-import com.google.android.gms.maps.model.PolylineOptions
+import com.dji.droneparking.util.DJIDemoApplication
 import com.dji.droneparking.util.Tools.showToast
-import com.google.android.gms.maps.GoogleMap
 import dji.common.error.DJIError
 import dji.common.error.DJIMissionError
 import dji.common.flightcontroller.virtualstick.*
@@ -39,7 +38,7 @@ class MavicMiniMissionOperator(context: Context) {
     private lateinit var waypoints: MutableList<Waypoint>
     private lateinit var currentWaypoint: Waypoint
 
-    private var locationListener: LocationListener? = null
+    private var locationListener: LocationListener? = null //uninitialized implementation of LocationListener interface
     private var operatorListener: WaypointMissionOperatorListener? = null
     private lateinit var currentDroneLocation: LocationCoordinate2D
     private var droneLocationLiveData: MutableLiveData<LocationCoordinate2D> = MutableLiveData()
@@ -47,29 +46,41 @@ class MavicMiniMissionOperator(context: Context) {
     private var travelledLongitude = false
     private var waypointTracker = 0
 
-    private var sendDataTimer = Timer()
+    private var sendDataTimer = Timer() //used to schedule tasks for future execution in a background thread
     private lateinit var sendDataTask: SendDataTask
 
-    private var toggle = false
+    private var originalLongitudeDiff = -1.0
+    private var originalLatitudeDiff = -1.0
 
     init {
         initFlightController()
         activity = context as AppCompatActivity
     }
 
+
+    //Interface used to listen to the drone's location whenever it gets updated.
+    //When onLocationUpdate() is called, any implementations of LocationListener will receive the drone's location coordinates.
     fun interface LocationListener {
-        fun locate(location: LocationCoordinate2D)
+        fun onLocationUpdate(location: LocationCoordinate2D)
     }
 
     private fun initFlightController() {
         DJIDemoApplication.getFlightController()?.let { flightController ->
 
-            flightController.setVirtualStickModeEnabled(true, null)
+            flightController.setVirtualStickModeEnabled(
+                true,
+                null
+            ) //enables the aircraft to be controlled virtually
+
+            //setting the modes for controlling the drone's roll, pitch, and yaw
             flightController.rollPitchControlMode = RollPitchControlMode.VELOCITY
             flightController.yawControlMode = YawControlMode.ANGLE
             flightController.verticalControlMode = VerticalControlMode.POSITION
+
+            //setting the drone's flight coordinate system
             flightController.rollPitchCoordinateSystem = FlightCoordinateSystem.GROUND
 
+            //Checking the flightController's state (10 times a second) and getting the drone's current location coordinates
             flightController.setStateCallback { flightControllerState ->
                 currentDroneLocation = LocationCoordinate2D(
                     flightControllerState.aircraftLocation.latitude,
@@ -77,16 +88,19 @@ class MavicMiniMissionOperator(context: Context) {
                 )
 
                 droneLocationLiveData.postValue(currentDroneLocation)
-                locationListener?.locate(currentDroneLocation)
+                locationListener?.onLocationUpdate(currentDroneLocation)
 
             }
         }
     }
 
+    //This function is called by MainActivity to create a new LocationListener implementation inside it.
+    //mLocationListener is then set to this implementation.
     fun setLocationListener(listener: LocationListener) {
         this.locationListener = listener
     }
 
+    //Function used to set the current waypoint mission and waypoint list
     fun loadMission(mission: WaypointMission?): DJIError? {
         return if (mission == null) {
             this.state = WaypointMissionState.NOT_READY
@@ -99,6 +113,7 @@ class MavicMiniMissionOperator(context: Context) {
         }
     }
 
+    //Function used to get the current waypoint mission ready to start
     fun uploadMission(callback: CommonCallbacks.CompletionCallback<DJIMissionError>?) {
         if (this.state == WaypointMissionState.READY_TO_UPLOAD) {
             this.state = WaypointMissionState.READY_TO_START
@@ -109,13 +124,7 @@ class MavicMiniMissionOperator(context: Context) {
         }
     }
 
-    /***********************
-     * Roll: POSITIVE is SOUTH, NEGATIVE is NORTH, Range: [-30, 30]
-     * Pitch: POSITIVE is EAST, NEGATIVE is WEST, Range: [-30, 30]
-     * YAW: POSITIVE is RIGHT, NEGATIVE is LEFT, Range: [-360, 360]
-     * THROTTLE: UPWARDS MOVEMENT
-     */
-
+    //Function used to make the drone takeoff and then begin execution of the current waypoint mission
     fun startMission(callback: CommonCallbacks.CompletionCallback<DJIError>?) {
         if (this.state == WaypointMissionState.READY_TO_START) {
 
@@ -135,44 +144,68 @@ class MavicMiniMissionOperator(context: Context) {
         }
     }
 
+    //Function used to execute the current waypoint mission
     @SuppressLint("LongLogTag")
     private fun executeMission() {
 
         state = WaypointMissionState.EXECUTION_STARTING
 
+        //running the execution in a coroutine to prevent blocking the main thread
         activity.lifecycleScope.launch {
             withContext(Dispatchers.Main) {
 
+                currentWaypoint = waypoints[waypointTracker] //getting the current waypoint
 
-                currentWaypoint = waypoints[waypointTracker]
-
+                //observing changes to the drone's location coordinates
                 droneLocationLiveData.observe(activity, { currentLocation ->
 
                     state = WaypointMissionState.EXECUTING
+
+
                     val longitudeDiff =
                         currentWaypoint.coordinate.longitude - currentLocation.longitude
                     val latitudeDiff =
                         currentWaypoint.coordinate.latitude - currentLocation.latitude
 
+                    if (abs(latitudeDiff) > originalLatitudeDiff) {
+                        originalLatitudeDiff = abs(latitudeDiff)
+                    }
+
+                    if (abs(longitudeDiff) > originalLongitudeDiff) {
+                        originalLongitudeDiff = abs(longitudeDiff)
+                    }
+
+                    //terminating the sendDataTimer and creating a new one
                     sendDataTimer.cancel()
                     sendDataTimer = Timer()
 
                     when {
-                        //END CLAUSE FOR LONGITUDE MOVEMENT
-                        abs(longitudeDiff) < 0.000003 && !travelledLongitude -> {
+                        //when the longitude difference becomes insignificant:
+                        abs(longitudeDiff) < 0.000001 && !travelledLongitude -> {
                             travelledLongitude = true
                             Log.i("STATUS", "finished travelling LONGITUDE")
-                            sendDataTimer.cancel()
+                            sendDataTimer.cancel() //cancel all scheduled data tasks
                         }
-
-                        //END CLAUSE FOR LATITUDE MOVEMENT
-                        abs(latitudeDiff) < 0.000003 && travelledLongitude -> {
+                        //when the latitude difference becomes insignificant and there
+                        //... is no longitude difference (current waypoint has been reached):
+                        abs(latitudeDiff) < 0.000001 && travelledLongitude -> {
+                            //move to the next waypoint in the waypoints list
                             waypointTracker++
                             Log.i("STATUS", "finished travelling LATITUDE")
                             if (waypointTracker < waypoints.size) {
                                 currentWaypoint = waypoints[waypointTracker]
                                 travelledLongitude = false
-                            } else {
+                                originalLatitudeDiff = -1.0
+                                originalLongitudeDiff = -1.0
+
+                                Handler(Looper.getMainLooper()).postDelayed(
+                                    {
+                                        Log.d(TAG, "I was just stopped")
+                                    },
+                                    1000
+                                )
+
+                            } else { //If all waypoints have been reached, stop the mission
                                 state = WaypointMissionState.EXECUTION_STOPPING
                                 stopMission { error ->
 
@@ -185,28 +218,42 @@ class MavicMiniMissionOperator(context: Context) {
                                 }
                             }
 
-                            sendDataTimer.cancel()
+                            sendDataTimer.cancel() //cancel all scheduled data tasks
                         }
 
                         //MOVE IN LONGITUDE DIRECTION
                         !travelledLongitude -> {//!travelledLongitude
-                            Log.i("STATUS", "LONG")
-                            toggle = true
+                            var speed: Float = mission.autoFlightSpeed
+
+                            if (abs(longitudeDiff) / originalLongitudeDiff < 0.3f) {
+                                speed = kotlin.math.max(
+                                    (mission.autoFlightSpeed * (abs(longitudeDiff) / (originalLongitudeDiff * 0.3f))).toFloat(),
+                                    1.2f
+                                )
+                            }
+
                             chooseDirection(
                                 longitudeDiff,
-                                Direction(pitch = mission.autoFlightSpeed),
-                                Direction(pitch = mission.autoFlightSpeed * -1)
+                                Direction(pitch = speed),
+                                Direction(pitch = -speed)
                             )
                         }
 
                         //MOVE IN LATITUDE DIRECTION IF LONGITUDE IS DONE
                         travelledLongitude -> {//travelledLongitude
-                            Log.i("STATUS", "LAT")
-                            toggle = false
+                            var speed: Float = mission.autoFlightSpeed
+
+                            if (abs(latitudeDiff) / originalLatitudeDiff < 0.3f) {
+                                speed = kotlin.math.max(
+                                    (mission.autoFlightSpeed * (abs(latitudeDiff) / (originalLatitudeDiff * 0.3f))).toFloat(),
+                                    1.2f
+                                )
+                            }
+
                             chooseDirection(
                                 latitudeDiff,
-                                Direction(roll = mission.autoFlightSpeed),
-                                Direction(roll = mission.autoFlightSpeed * -1)
+                                Direction(roll = speed),
+                                Direction(roll = -speed)
                             )
                         }
                     }
@@ -217,6 +264,7 @@ class MavicMiniMissionOperator(context: Context) {
         }
     }
 
+    //Function used to choose whether the drone should move positively or negatively in the provided direction
     private fun chooseDirection(difference: Double, dir1: Direction, dir2: Direction) {
         if (difference > 0) {
             move(dir1)
@@ -225,7 +273,10 @@ class MavicMiniMissionOperator(context: Context) {
         }
     }
 
+    @SuppressLint("LongLogTag")
+    //Function used to move the drone in the provided direction
     private fun move(dir: Direction) {
+        Log.d(TAG, "PITCH: ${dir.pitch}, ROLL: ${dir.roll}")
         sendDataTask =
             SendDataTask(dir.pitch, dir.roll, dir.yaw, dir.altitude)
         sendDataTimer.schedule(sendDataTask, 0, 200)
@@ -237,14 +288,23 @@ class MavicMiniMissionOperator(context: Context) {
     fun pauseMission() {
     }
 
+    //Function used to stop the current waypoint mission and land the drone
     fun stopMission(callback: CommonCallbacks.CompletionCallback<DJIMissionError>?) {
         showToast(activity, "trying to land")
         DJIDemoApplication.getFlightController()?.startLanding(callback)
     }
 
+    //Function used to upload the
     fun retryUploadMission(callback: CommonCallbacks.CompletionCallback<DJIMissionError>?) {
         uploadMission(callback)
     }
+
+    /*
+     * Roll: POSITIVE is SOUTH, NEGATIVE is NORTH, Range: [-30, 30]
+     * Pitch: POSITIVE is EAST, NEGATIVE is WEST, Range: [-30, 30]
+     * YAW: POSITIVE is RIGHT, NEGATIVE is LEFT, Range: [-360, 360]
+     * THROTTLE: UPWARDS MOVEMENT
+     */
 
     fun addListener(listener: WaypointMissionOperatorListener) {
         this.operatorListener = listener

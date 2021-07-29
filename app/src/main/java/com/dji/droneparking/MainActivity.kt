@@ -1,25 +1,46 @@
 package com.dji.droneparking
 
 import android.app.AlertDialog
+import android.graphics.SurfaceTexture
+import android.os.Build
 import android.content.Intent
 import android.os.Bundle
+import android.util.DisplayMetrics
 import android.util.Log
+import android.view.TextureView
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.cardview.widget.CardView
+import com.dji.droneparking.util.DJIDemoApplication
 import com.dji.droneparking.util.MavicMiniMissionOperator
 import com.dji.droneparking.util.Tools.showToast
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.*
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import dji.common.gimbal.*
 import dji.common.mission.waypoint.*
+import dji.common.product.Model
+import dji.sdk.base.BaseProduct
+import dji.sdk.camera.Camera
+import dji.sdk.camera.VideoFeeder
+import dji.sdk.codec.DJICodecManager
 import dji.sdk.gimbal.Gimbal
 import dji.sdk.sdkmanager.DJISDKManager
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.roundToInt
 
+
+/**
+ * The purpose of this app is to fly a DJI Mavic Mini drone over a parking lot in an automated fashion, have
+ * ... its camera capture images of the parking spaces below, and use a trained machine learning model to
+ * ... interpret the images and count the number of cars and empty spaces.
+ */
 
 class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapReadyCallback,
-    View.OnClickListener {
+    View.OnClickListener, TextureView.SurfaceTextureListener {
+
+    //UI views
     private lateinit var locate: Button
     private lateinit var add: Button
     private lateinit var clear: Button
@@ -28,48 +49,74 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     private lateinit var start: Button
     private lateinit var stop: Button
     private lateinit var flightPlanner: Button
+    private lateinit var videoSurface: TextureView
+    private lateinit var toggleButton: FloatingActionButton
+    private lateinit var cardView: CardView
+
+    private var isCameraShowing = false
+    private var receivedVideoDataListener: VideoFeeder.VideoDataListener? =
+        null //listener that recieves video data coming from the connected DJI product
+    private var codecManager: DJICodecManager? =
+        null //handles the encoding and decoding of video data
+
+
+
+    //drone flight variables
+    private var droneLocationLat: Double = 15.0
+    private var droneLocationLng: Double = 15.0
+    private var altitude = 100f
+    private var speed = 10f
+
+    //map and waypoint variables
+    private var gMap: GoogleMap? = null
+    private lateinit var mapFragment: SupportMapFragment
+    private var droneMarker: Marker? = null
+    private var isAdd = false
+    private val markers: MutableMap<Int, Marker> = ConcurrentHashMap<Int, Marker>()
+
+    //waypoint mission variables
+    private var instance: MavicMiniMissionOperator? = null
+    private var finishedAction = WaypointMissionFinishedAction.NO_ACTION
+    private var headingMode = WaypointMissionHeadingMode.AUTO
+
+    private var screenHeight = 0
+    private var screenWidth = 0
+
+    private lateinit var gimbal: Gimbal
 
     companion object {
         const val TAG = "GSDemoActivity"
-        private var waypointMissionBuilder: WaypointMission.Builder? = null
+        private var waypointMissionBuilder: WaypointMission.Builder? =
+            null //used to build waypoint missions
 
         fun checkGpsCoordination(latitude: Double, longitude: Double): Boolean {
             return latitude > -90 && latitude < 90 && longitude > -180 && longitude < 180 && latitude != 0.0 && longitude != 0.0
         }
     }
 
-    private var isAdd = false
-    private var droneLocationLat: Double = 15.0
-    private var droneLocationLng: Double = 15.0
-    private var droneMarker: Marker? = null
-    private val markers: MutableMap<Int, Marker> = ConcurrentHashMap<Int, Marker>()
-    private var gMap: GoogleMap? = null
-    private lateinit var mapFragment: SupportMapFragment
-
-    private var altitude = 100f
-    private var speed = 10f
-
-    private var instance: MavicMiniMissionOperator? = null
-    private var finishedAction = WaypointMissionFinishedAction.NO_ACTION
-    private var headingMode = WaypointMissionHeadingMode.AUTO
-
-    private lateinit var gimbal: Gimbal
-
-
+    //Creating the activity
     override fun onCreate(savedInstanceState: Bundle?) {
 
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_main) //setting the activity's content from layout
 
-        initUi()
+        //getting the mobile device screen dimensions
+        val displayMetrics = DisplayMetrics()
+        windowManager.defaultDisplay.getMetrics(displayMetrics)
+        screenWidth = displayMetrics.widthPixels
+        screenHeight = displayMetrics.heightPixels
 
+        initUi() //initializing the UI elements
+
+        //setting up the map fragment (configured to host Google Maps in the layout view xml)
         mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.onCreate(savedInstanceState)
-        mapFragment.getMapAsync(this)
+        mapFragment.getMapAsync(this) //callback when onMapReady() is called
 
         val rotation = Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).pitch(-90f).build()
         gimbal = DJISDKManager.getInstance().product.gimbal
-        gimbal.rotate(rotation
+        gimbal.rotate(
+            rotation
         ) { djiError ->
             if (djiError == null) {
                 Log.d("STATUS", "rotate gimbal success")
@@ -82,19 +129,47 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             }
         }
 
-        getWaypointMissionOperator()?.setLocationListener { location ->
-            droneLocationLat = location.latitude
-            droneLocationLng = location.longitude
-            updateDroneLocation()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            //get an instance of MavicMiniOperationOperator and set up a listener
+            getWaypointMissionOperator()?.setLocationListener { location ->
+                droneLocationLat = location.latitude
+                droneLocationLng = location.longitude
+                updateDroneLocation()
+            }
         }
-        
 
+
+        // The receivedVideoDataListener receives the raw video data and the size of the data from the DJI product.
+        // It then sends this data to the codec manager for decoding.
+        receivedVideoDataListener = VideoFeeder.VideoDataListener { videoBuffer, size ->
+            codecManager?.sendDataToDecoder(videoBuffer, size)
+        }
+
+    }
+
+    override fun onStart() {
+        super.onStart()
+
+        toggleButton.setOnClickListener {
+            isCameraShowing = !isCameraShowing
+
+            if (isCameraShowing) {
+                cardView.visibility = View.VISIBLE
+                toggleButton.setImageResource(R.drawable.ic_map_icon)
+
+            } else {
+                cardView.visibility = View.GONE
+                toggleButton.setImageResource(R.drawable.ic_linked_camera)
+            }
+
+        }
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
         this.gMap = googleMap
         gMap?.setOnMapClickListener(this)
         gMap?.mapType = GoogleMap.MAP_TYPE_SATELLITE
+//        getWaypointMissionOperator()?.setMap(gMap!!)
     }
 
     override fun onMapClick(point: LatLng) {
@@ -104,6 +179,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             //TODO 'logic to add waypoint'
 
             val waypoint = Waypoint(point.latitude, point.longitude, altitude)
+// Instantiates a new Polygon object and adds points to define a rectangle
 
             if (waypointMissionBuilder == null) {
                 waypointMissionBuilder =
@@ -142,6 +218,22 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         stop = findViewById(R.id.stop)
         flightPlanner = findViewById(R.id.flight_planner)
 
+        videoSurface = findViewById(R.id.video_previewer_surface)
+        toggleButton = findViewById(R.id.toggle_button)
+        cardView = findViewById(R.id.card_view)
+
+        //setting the video feed to show a 16:9 aspect ratio
+        val temp = (screenWidth / 1.77779).roundToInt()
+        showToast(temp.toString())
+        val videoParams = videoSurface.layoutParams
+        videoParams.height = temp
+        videoSurface.layoutParams = videoParams
+
+
+        //Giving videoSurface a listener that checks for when a surface texture is available.
+        //The videoSurface will then display the surface texture, which in this case is a camera video stream.
+        videoSurface.surfaceTextureListener = this
+
         locate.setOnClickListener(this)
         add.setOnClickListener(this)
         clear.setOnClickListener(this)
@@ -151,6 +243,78 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         upload.setOnClickListener(this)
         flightPlanner.setOnClickListener(this)
     }
+
+    //Function that initializes the display for the videoSurface TextureView
+    private fun initPreviewer() {
+        val product: BaseProduct = DJIDemoApplication.getProductInstance()
+            ?: return //gets an instance of the connected DJI product (null if nonexistent)
+        //if DJI product is disconnected, alert the user
+        if (!product.isConnected) {
+            showToast(getString(R.string.disconnected))
+        } else {
+            //if the DJI product is connected and the aircraft model is not unknown, add the recievedVideoDataListener
+            // ... to the primary video feed.
+            videoSurface.surfaceTextureListener = this
+            if (product.model != Model.UNKNOWN_AIRCRAFT) {
+                VideoFeeder.getInstance().primaryVideoFeed.addVideoDataListener(
+                    receivedVideoDataListener
+                )
+            }
+        }
+    }
+
+    //Function that displays toast messages to the user
+    private fun showToast(msg: String?) {
+        runOnUiThread { Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show() }
+    }
+
+    //Function that unitializes the display for the videoSurface TextureView
+    private fun uninitPreviewer() {
+        val camera: Camera = DJIDemoApplication.getCameraInstance() ?: return
+        VideoFeeder.getInstance().primaryVideoFeed.addVideoDataListener(null)
+
+    }
+
+    //When the MainActivity is created or resumed, initalize the video feed display
+    override fun onResume() {
+        super.onResume()
+        initPreviewer()
+    }
+
+    //When a TextureView's SurfaceTexture is ready for use, use it to initialize the codecManager
+    override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+        if (codecManager == null) {
+            codecManager = DJICodecManager(this, surface, width, height)
+        }
+    }
+
+    //When a SurfaceTexture is updated
+    override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
+
+    //when a SurfaceTexture's size changes
+    override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
+
+    //when a SurfaceTexture is about to be destroyed, uninitialize the codedManager
+    override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+        codecManager?.cleanSurface()
+        codecManager = null
+
+        return false
+    }
+
+
+    //When the MainActivity is paused, clear the video feed display
+    override fun onPause() {
+        uninitPreviewer()
+        super.onPause()
+    }
+
+    //When the MainActivity is destroyed, clear the video feed display
+    override fun onDestroy() {
+        uninitPreviewer()
+        super.onDestroy()
+    }
+
 
     private fun updateDroneLocation() {
         runOnUiThread {
@@ -257,7 +421,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
                     speed = 3.0f
                 }
                 R.id.MidSpeed -> {
-                    speed = 5.0f
+                    speed = 7.0f
                 }
                 R.id.HighSpeed -> {
                     speed = 10.0f
@@ -373,10 +537,10 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     private fun enableDisableAdd() {
         if (!isAdd) {
             isAdd = true
-            add.text = "Exit"
+            add.text = getString(R.string.exit)
         } else {
             isAdd = false
-            add.text = "Add"
+            add.text = getString(R.string.add)
         }
     }
 
@@ -390,10 +554,13 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         gMap?.moveCamera(cameraUpdate)
     }
 
+    //Gets an instance of the MavicMiniMissionOperator class and gives this activity's context as input
     private fun getWaypointMissionOperator(): MavicMiniMissionOperator? {
 
         if (instance == null)
-            instance = MavicMiniMissionOperator(this)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                instance = MavicMiniMissionOperator(this)
+            }
 
         return instance
     }
