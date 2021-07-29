@@ -81,6 +81,14 @@
                 android:layout_height="wrap_content"
                 android:text="Stop"
                 android:layout_weight="1" />
+
+        <Button
+            android:id="@+id/flight_planner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="Flight Planner"
+            android:layout_weight="1" />
     </LinearLayout>
 
     <androidx.fragment.app.FragmentContainerView

@@ -16,6 +16,7 @@ android {
     compileSdkVersion 30
     buildToolsVersion "30.0.3"
     useLibrary 'org.apache.http.legacy'
+    sourceSets.main.res.filter.exclude '**/DJIImageDownloader.kt'
 
     defaultConfig {
         applicationId 'com.riis.livestream'

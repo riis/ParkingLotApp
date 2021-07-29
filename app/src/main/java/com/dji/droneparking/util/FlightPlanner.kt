@@ -5,6 +5,7 @@ import com.dji.droneparking.util.Tools.reverseList
 import com.mapbox.geojson.Point
 import com.mapbox.geojson.Polygon
 import com.mapbox.mapboxsdk.geometry.LatLng
+import com.mapbox.turf.TurfJoins
 //import com.mapbox.turf.TurfJoins
 import dji.common.mission.waypoint.*
 import dji.common.model.LocationCoordinate2D
@@ -64,12 +65,14 @@ object FlightPlanner {
         var minY = points[0].latitude
         var maxX = points[0].longitude
         var maxY = points[0].latitude
+
         for (coord in points) {
             minX = if (minX > coord.longitude) coord.longitude else minX
             minY = if (minY > coord.latitude) coord.latitude else minY
             maxX = if (maxX < coord.longitude) coord.longitude else maxX
             maxY = if (maxY < coord.latitude) coord.latitude else maxY
         }
+
         var x = minX
         var y = minY
         val xIncrement = spacingFeetToDegrees(spacingFeet)
@@ -90,7 +93,7 @@ object FlightPlanner {
 
             // Reset y and increment x;
             y = minY
-            x = x + xIncrement
+            x += xIncrement
         }
         val coordinates = getReorderedFlightPlan(locations)
         val results: MutableList<LatLng> = ArrayList()
@@ -150,23 +153,30 @@ object FlightPlanner {
         locations: List<LocationCoordinate2D>,
         area: List<LatLng>
     ): MutableList<LocationCoordinate2D> {
+
         val points: MutableList<List<Point>> = ArrayList()
         val outerPoints: MutableList<Point> = ArrayList()
         val result: MutableList<LocationCoordinate2D> = ArrayList()
+
         for (point in area) {
             outerPoints.add(Point.fromLngLat(point.longitude, point.latitude))
         }
+
         points.add(outerPoints)
         val polygon = Polygon.fromLngLats(points)
+
         for (coord in locations) {
+
             val longitude = coord.longitude
             val latitude = coord.latitude
             val point = Point.fromLngLat(longitude, latitude)
-//         TODO val inside: Boolean = TurfJoins.inside(point, polygon)
-//            if (inside) {
-//                result.add(coord)
-//            }
+            val inside: Boolean = TurfJoins.inside(point, polygon)
+
+            if (inside) {
+                result.add(coord)
+            }
         }
+
         return result
     }
 

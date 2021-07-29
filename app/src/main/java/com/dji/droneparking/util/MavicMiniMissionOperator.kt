@@ -51,9 +51,6 @@ class MavicMiniMissionOperator(context: Context) {
     private lateinit var sendDataTask: SendDataTask
 
     private var toggle = false
-    private lateinit var polylineOptions: PolylineOptions
-    private lateinit var map : GoogleMap
-    private lateinit var polyline : Polyline
 
     init {
         initFlightController()
@@ -62,11 +59,6 @@ class MavicMiniMissionOperator(context: Context) {
 
     fun interface LocationListener {
         fun locate(location: LocationCoordinate2D)
-    }
-
-
-    fun setMap(map:GoogleMap){
-        this.map = map
     }
 
     private fun initFlightController() {
@@ -110,12 +102,6 @@ class MavicMiniMissionOperator(context: Context) {
     fun uploadMission(callback: CommonCallbacks.CompletionCallback<DJIMissionError>?) {
         if (this.state == WaypointMissionState.READY_TO_UPLOAD) {
             this.state = WaypointMissionState.READY_TO_START
-            polylineOptions = PolylineOptions()
-            for (waypoint in waypoints) {
-                val coordinate = LatLng(waypoint.coordinate.latitude, waypoint.coordinate.longitude)
-                polylineOptions.add(coordinate)
-            }
-            polyline = map.addPolyline(polylineOptions)
             callback?.onResult(null)
         } else {
             this.state = WaypointMissionState.NOT_READY

@@ -22,6 +22,7 @@ class WaypointMissionManager(
     fun startMission() {
         updateToast("Uploading mission to drone...")
         operator.loadMission(mission)
+
         operator.addListener(object : WaypointMissionOperatorListener {
             override fun onDownloadUpdate(waypointMissionDownloadEvent: WaypointMissionDownloadEvent) {}
             override fun onUploadUpdate(waypointMissionUploadEvent: WaypointMissionUploadEvent) {}
@@ -41,6 +42,7 @@ class WaypointMissionManager(
                 }
             }
         })
+
         operator.uploadMission { djiError: DJIError? ->
             if (djiError != null) {
                 Log.e("MISSION", "Upload error: " + djiError.getDescription())

@@ -1,6 +1,7 @@
 package com.dji.droneparking
 
 import android.app.AlertDialog
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -26,6 +27,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     private lateinit var upload: Button
     private lateinit var start: Button
     private lateinit var stop: Button
+    private lateinit var flightPlanner: Button
 
     companion object {
         const val TAG = "GSDemoActivity"
@@ -93,7 +95,6 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         this.gMap = googleMap
         gMap?.setOnMapClickListener(this)
         gMap?.mapType = GoogleMap.MAP_TYPE_SATELLITE
-        getWaypointMissionOperator()?.setMap(gMap!!)
     }
 
     override fun onMapClick(point: LatLng) {
@@ -103,7 +104,6 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             //TODO 'logic to add waypoint'
 
             val waypoint = Waypoint(point.latitude, point.longitude, altitude)
-// Instantiates a new Polygon object and adds points to define a rectangle
 
             if (waypointMissionBuilder == null) {
                 waypointMissionBuilder =
@@ -140,6 +140,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         upload = findViewById(R.id.upload)
         start = findViewById(R.id.start)
         stop = findViewById(R.id.stop)
+        flightPlanner = findViewById(R.id.flight_planner)
 
         locate.setOnClickListener(this)
         add.setOnClickListener(this)
@@ -148,6 +149,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         start.setOnClickListener(this)
         stop.setOnClickListener(this)
         upload.setOnClickListener(this)
+        flightPlanner.setOnClickListener(this)
     }
 
     private fun updateDroneLocation() {
@@ -197,6 +199,10 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             }
             R.id.stop -> {
                 stopWaypointMission()
+            }
+            R.id.flight_planner ->{
+                val intent = Intent(v.context, FlightPlanActivity::class.java)
+                v.context.startActivity(intent)
             }
             else -> {
             }

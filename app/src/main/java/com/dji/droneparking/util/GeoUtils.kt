@@ -26,7 +26,7 @@ fun distance(a: LatLng, b: LatLng): Double {
  * @param point: The point to find the distance to
  * @return: A double describing the distance
  */
-fun distanceToSegment(a: com.google.android.gms.maps.model.LatLng, b: com.google.android.gms.maps.model.LatLng, point: com.google.android.gms.maps.model.LatLng): Double {
+fun distanceToSegment(a: LatLng, b: LatLng, point: LatLng): Double {
     // Find length of the segment, break if it's zero. That is a==b; just use distance formula
     val lengthSquared = distance(a, b)
     if(lengthSquared == 0.0) {
