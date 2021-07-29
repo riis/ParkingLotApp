@@ -235,8 +235,6 @@ class MavicMiniMissionOperator(context: Context) {
                                 originalLatitudeDiff = -1.0
                                 originalLongitudeDiff = -1.0
 
-                                Thread.sleep(1000) //TODO this is just for testing, probably not a good idea to keep this later on
-
                             } else { //If all waypoints have been reached, stop the mission
                                 state = WaypointMissionState.EXECUTION_STOPPING
                                 stopMission { error ->
