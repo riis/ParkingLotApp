@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
 import kotlin.math.abs
+import kotlin.math.pow
 
 
 private const val TAG = "MavicMiniMissionOperator"
@@ -158,6 +159,19 @@ class MavicMiniMissionOperator(context: Context) {
         }
     }
 
+/*
+ * Calculate the euclidean distance between two points.
+ * Ignore curvature of the earth.
+ *
+ * @param a: The first point
+ * @param b: The second point
+ * @return: The square of the distance between a and b
+ */
+
+    fun distance(a: LatLng, b: LatLng): Double {
+        return (a.longitude - b.longitude).pow(2.0) + (a.latitude - b.latitude).pow(2.0)
+    }
+
     //Function used to execute the current waypoint mission
     @SuppressLint("LongLogTag")
     private fun executeMission() {
@@ -175,6 +189,7 @@ class MavicMiniMissionOperator(context: Context) {
 
                     state = WaypointMissionState.EXECUTING
 
+                    Log.d("TESTING", "${distance(LatLng(currentWaypoint.coordinate.latitude, currentWaypoint.coordinate.longitude), LatLng(currentLocation.latitude, currentLocation.longitude))}")
 
                     val longitudeDiff =
                         currentWaypoint.coordinate.longitude - currentLocation.longitude
@@ -195,14 +210,14 @@ class MavicMiniMissionOperator(context: Context) {
 
                     when {
                         //when the longitude difference becomes insignificant:
-                        abs(longitudeDiff) < 0.000001 && !travelledLongitude -> {
+                        abs(longitudeDiff) < 0.000002 && !travelledLongitude -> {
                             travelledLongitude = true
                             Log.i("STATUS", "finished travelling LONGITUDE")
                             sendDataTimer.cancel() //cancel all scheduled data tasks
                         }
                         //when the latitude difference becomes insignificant and there
                         //... is no longitude difference (current waypoint has been reached):
-                        abs(latitudeDiff) < 0.000001 && travelledLongitude -> {
+                        abs(latitudeDiff) < 0.000002 && travelledLongitude -> {
                             //move to the next waypoint in the waypoints list
                             waypointTracker++
                             Log.i("STATUS", "finished travelling LATITUDE")
@@ -212,12 +227,7 @@ class MavicMiniMissionOperator(context: Context) {
                                 originalLatitudeDiff = -1.0
                                 originalLongitudeDiff = -1.0
 
-                                Handler(Looper.getMainLooper()).postDelayed(
-                                    {
-                                        Log.d(TAG, "I was just stopped")
-                                    },
-                                    1000
-                                )
+                                Thread.sleep(1000) //TODO this is just for testing, probably not a good idea to keep this later on
 
                             } else { //If all waypoints have been reached, stop the mission
                                 state = WaypointMissionState.EXECUTION_STOPPING
@@ -228,6 +238,7 @@ class MavicMiniMissionOperator(context: Context) {
                                         "Mission Ended: " + if (error == null) "Successfully" else error.description
                                     )
                                 }
+                                sendDataTimer.cancel()
                             }
 
                             sendDataTimer.cancel() //cancel all scheduled data tasks
@@ -237,12 +248,10 @@ class MavicMiniMissionOperator(context: Context) {
                         !travelledLongitude -> {//!travelledLongitude
                             var speed: Float = mission.autoFlightSpeed
 
-                            if (abs(longitudeDiff) / originalLongitudeDiff < 0.3f) {
-                                speed = kotlin.math.max(
-                                    (mission.autoFlightSpeed * (abs(longitudeDiff) / (originalLongitudeDiff * 0.3f))).toFloat(),
-                                    1.2f
-                                )
-                            }
+                            speed = kotlin.math.max(
+                                (mission.autoFlightSpeed * (abs(longitudeDiff) / (originalLongitudeDiff))).toFloat(),
+                                0.5f
+                            )
 
                             chooseDirection(
                                 longitudeDiff,
@@ -255,12 +264,10 @@ class MavicMiniMissionOperator(context: Context) {
                         travelledLongitude -> {//travelledLongitude
                             var speed: Float = mission.autoFlightSpeed
 
-                            if (abs(latitudeDiff) / originalLatitudeDiff < 0.3f) {
                                 speed = kotlin.math.max(
-                                    (mission.autoFlightSpeed * (abs(latitudeDiff) / (originalLatitudeDiff * 0.3f))).toFloat(),
-                                    1.2f
+                                    (mission.autoFlightSpeed * (abs(latitudeDiff) / (originalLatitudeDiff))).toFloat(),
+                                    0.5f
                                 )
-                            }
 
                             chooseDirection(
                                 latitudeDiff,
