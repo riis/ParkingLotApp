@@ -29,6 +29,7 @@ import kotlinx.coroutines.withContext
 import java.util.*
 import kotlin.math.abs
 import kotlin.math.pow
+import kotlin.math.sqrt
 
 
 private const val TAG = "MavicMiniMissionOperator"
@@ -168,8 +169,8 @@ class MavicMiniMissionOperator(context: Context) {
  * @param b: The second point
  * @return: The square of the distance between a and b
  */
-    fun distance(a: LatLng, b: LatLng): Double {
-        return (a.longitude - b.longitude).pow(2.0) + (a.latitude - b.latitude).pow(2.0)
+    private fun distance(a: LatLng, b: LatLng): Double {
+        return sqrt((a.longitude - b.longitude).pow(2.0) + (a.latitude - b.latitude).pow(2.0))
     }
 
     //Function used to execute the current waypoint mission
