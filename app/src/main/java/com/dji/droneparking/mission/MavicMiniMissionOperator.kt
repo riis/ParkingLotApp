@@ -57,6 +57,7 @@ class MavicMiniMissionOperator(context: Context) {
     private lateinit var polyline: Polyline
     private var originalLongitudeDiff = -1.0
     private var originalLatitudeDiff = -1.0
+    private var segmentCounter = 6.4008
 
     init {
         initFlightController()
@@ -207,6 +208,9 @@ class MavicMiniMissionOperator(context: Context) {
                     val droneLocation = LatLng(currentLocation.latitude, currentLocation.longitude)
                     val pointA = LatLng(waypoints[1].coordinate.latitude, waypoints[1].coordinate.longitude)
                     val autoStitchDistance = distance(droneLocation, pointA) * 111139
+
+
+
 
                     Log.i("STATUS", "$autoStitchDistance meters left")
 
