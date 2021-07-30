@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
 import kotlin.math.abs
+import kotlin.math.log
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -56,6 +57,8 @@ class MavicMiniMissionOperator(context: Context) {
     private var originalLongitudeDiff = -1.0
     private var originalLatitudeDiff = -1.0
     private var segmentCounter = 6.4008
+    private lateinit var mCompassListener: CompassListener
+    private var compassHeadingLiveData: MutableLiveData<Float> = MutableLiveData()
 
     init {
         initFlightController()
@@ -69,10 +72,15 @@ class MavicMiniMissionOperator(context: Context) {
         fun onLocationUpdate(location: LocationCoordinate2D)
     }
 
+    fun interface CompassListener{
+        fun onHeadingUpdate(heading: Float)
+    }
+
     //initializing the drone's flight controller
     fun setMap(map: GoogleMap) {
         this.map = map
     }
+
 
     private fun initFlightController() {
         DJIDemoApplication.getFlightController()?.let { flightController ->
@@ -100,6 +108,13 @@ class MavicMiniMissionOperator(context: Context) {
                 droneLocationLiveData.postValue(currentDroneLocation)
                 mLocationListener.onLocationUpdate(currentDroneLocation)
 
+                val heading = DJIDemoApplication.getFlightController()?.compass?.heading
+                if (heading != null) {
+                    mCompassListener.onHeadingUpdate(heading)
+                    compassHeadingLiveData.postValue(heading)
+                }
+
+
             }
         }
     }
@@ -109,6 +124,53 @@ class MavicMiniMissionOperator(context: Context) {
     fun setLocationListener(listener: LocationListener) {
         this.mLocationListener = listener
     }
+
+    fun setCompassListener(listener: CompassListener) {
+        this.mCompassListener = listener
+    }
+
+    fun alignHeading(){
+
+        DJIDemoApplication.getFlightController()?.startTakeoff { error ->
+            if (error == null) {
+                //TODO
+            } else {
+                //TODO
+            }
+        }
+
+        sendDataTimer.cancel()
+        sendDataTimer = Timer()
+
+
+        activity.lifecycleScope.launch {
+            withContext(Dispatchers.Main) {
+
+
+
+                if (compassHeadingLiveData.value != 120f){
+                    Log.d("STATUS", "heading not aligned")
+                    sendDataTask =
+                        SendDataTask(0f, 0f, 120f, 1.2f)
+                    sendDataTimer.schedule(sendDataTask, 0, 200)
+                }
+                else{
+                    sendDataTimer.cancel()
+
+                    DJIDemoApplication.getFlightController()?.startLanding { error ->
+                        if (error == null) {
+                            //TODO
+                        } else {
+                            //TODO
+                        }
+                    }
+                }
+
+
+            }
+        }
+    }
+
 
     //Function used to set the current waypoint mission and waypoint list
     fun loadMission(mission: WaypointMission?): DJIError? {

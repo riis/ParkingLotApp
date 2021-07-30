@@ -17,9 +17,12 @@ import com.dji.droneparking.mission.Tools.showToast
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.*
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import dji.common.error.DJIError
+import dji.common.error.DJIMissionError
 import dji.common.gimbal.*
 import dji.common.mission.waypoint.*
 import dji.common.product.Model
+import dji.common.util.CommonCallbacks
 import dji.sdk.base.BaseProduct
 import dji.sdk.camera.Camera
 import dji.sdk.camera.VideoFeeder
@@ -50,8 +53,10 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     private lateinit var videoSurface: TextureView
     private lateinit var toggleButton: FloatingActionButton
     private lateinit var cardView: CardView
+    private lateinit var compassTextView: TextView
 
     private lateinit var autoStitch: Button
+    private lateinit var alignButton: Button
 
     private var isCameraShowing = false
     private var receivedVideoDataListener: VideoFeeder.VideoDataListener? =
@@ -137,6 +142,12 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             }
         }
 
+        getWaypointMissionOperator()?.setCompassListener{ sensorVal ->
+            runOnUiThread {
+                compassTextView.text = sensorVal.toString()
+            }
+        }
+
 
         // The receivedVideoDataListener receives the raw video data and the size of the data from the DJI product.
         // It then sends this data to the codec manager for decoding.
@@ -214,6 +225,8 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         start = findViewById(R.id.start)
         stop = findViewById(R.id.stop)
         autoStitch = findViewById(R.id.autoStitchButton)
+        compassTextView = findViewById(R.id.compass_text_view)
+        alignButton = findViewById(R.id.align_button)
 
         videoSurface = findViewById(R.id.video_previewer_surface)
         toggleButton = findViewById(R.id.toggle_button)
@@ -239,6 +252,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         stop.setOnClickListener(this)
         upload.setOnClickListener(this)
         autoStitch.setOnClickListener(this)
+        alignButton.setOnClickListener(this)
     }
 
     //Function that initializes the display for the videoSurface TextureView
@@ -364,9 +378,16 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             R.id.autoStitchButton ->{
                 autoStitchMission()
             }
+            R.id.align_button ->{
+                alignDroneHeading()
+            }
             else -> {
             }
         }
+    }
+
+    private fun alignDroneHeading(){
+        getWaypointMissionOperator()?.alignHeading()
     }
 
     private fun autoStitchMission(){
