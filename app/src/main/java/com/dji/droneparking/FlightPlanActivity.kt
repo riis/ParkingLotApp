@@ -45,7 +45,6 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
 
 //    private lateinit var downloader: DJIImageDownloader
 
-    //  private Button clearFlightPath;
     private var aircraft: Aircraft? = null
     private lateinit var stitchBtn: Button
     private lateinit var btnCancelFlight: Button
@@ -163,7 +162,6 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
                 .withIconHaloWidth(2.0f)
                 .withDraggable(true)
         )
-
         symbols.add(symbol)
 
 

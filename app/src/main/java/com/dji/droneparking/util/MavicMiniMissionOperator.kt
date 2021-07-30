@@ -149,6 +149,7 @@ class MavicMiniMissionOperator(context: Context) {
     private fun executeMission() {
 
         state = WaypointMissionState.EXECUTION_STARTING
+        operatorListener?.onExecutionStart()
 
         //running the execution in a coroutine to prevent blocking the main thread
         activity.lifecycleScope.launch {
@@ -209,8 +210,12 @@ class MavicMiniMissionOperator(context: Context) {
                                 state = WaypointMissionState.EXECUTION_STOPPING
                                 stopMission { error ->
 
-                                    if (error == null) state = WaypointMissionState.INITIAL_PHASE
-
+                                    if (error == null) {
+                                        state = WaypointMissionState.INITIAL_PHASE
+                                        operatorListener?.onExecutionFinish(null)
+                                    } else{
+                                        operatorListener?.onExecutionFinish(error)
+                                    }
                                     showToast(
                                         activity,
                                         "Mission Ended: " + if (error == null) "Successfully" else error.description
