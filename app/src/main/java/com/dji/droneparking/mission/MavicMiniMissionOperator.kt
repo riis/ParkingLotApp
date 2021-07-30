@@ -22,6 +22,7 @@ import dji.common.mission.waypoint.WaypointMissionState
 import dji.common.model.LocationCoordinate2D
 import dji.common.util.CommonCallbacks
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
@@ -133,36 +134,30 @@ class MavicMiniMissionOperator(context: Context) {
 
         DJIDemoApplication.getFlightController()?.startTakeoff { error ->
             if (error == null) {
-                //TODO
-            } else {
-                //TODO
-            }
-        }
+                sendDataTimer.cancel()
+                sendDataTimer = Timer()
 
-        sendDataTimer.cancel()
-        sendDataTimer = Timer()
+                activity.lifecycleScope.launch {
+                    withContext(Dispatchers.Main) {
+
+                        compassHeadingLiveData.observe(activity, { heading ->
+                            if (heading != 0f) {
+                                Log.d("STATUS", "heading not aligned")
+                                sendDataTask =
+                                    SendDataTask(0f, 0f, 0f, 1.2f)
+                                sendDataTimer.schedule(sendDataTask, 0, 200)
+
+                            }
+                            else {
+                                DJIDemoApplication.getFlightController()?.startLanding { error ->
+                                    if (error == null) {
+                                        this.cancel()
+                                    }
+                                }
+                            }
 
 
-        activity.lifecycleScope.launch {
-            withContext(Dispatchers.Main) {
-
-
-
-                if (compassHeadingLiveData.value != 120f){
-                    Log.d("STATUS", "heading not aligned")
-                    sendDataTask =
-                        SendDataTask(0f, 0f, 120f, 1.2f)
-                    sendDataTimer.schedule(sendDataTask, 0, 200)
-                }
-                else{
-                    sendDataTimer.cancel()
-
-                    DJIDemoApplication.getFlightController()?.startLanding { error ->
-                        if (error == null) {
-                            //TODO
-                        } else {
-                            //TODO
-                        }
+                        })
                     }
                 }
 
