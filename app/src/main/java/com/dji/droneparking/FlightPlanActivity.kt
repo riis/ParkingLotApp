@@ -72,8 +72,8 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
         override fun onAnnotationDragFinished(symbol: Symbol) {
 
             symbols.add(symbol)
-
             val point = symbol.latLng
+
             var minDistanceIndex = -1
             var nextIndex: Int
 
@@ -94,7 +94,11 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
                     }
 
                     val distance: Double =
-                        distanceToSegment(polygonCoordinates[i], polygonCoordinates[nextIndex], point)
+                        distanceToSegment(
+                            polygonCoordinates[i],
+                            polygonCoordinates[nextIndex],
+                            point
+                        )
 
                     if (distance < minDistance) {
                         minDistance = distance
@@ -107,18 +111,19 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
 
                 try {
                     drawFlightPlan()
+
                 } catch (ignored: Exception) {
                 }
             }
 
             layoutConfirmPlan.visibility = View.VISIBLE
-
         }
 
         override fun onAnnotationDragStarted(symbol: Symbol) {
 
             symbols.remove(symbol)
             polygonCoordinates.remove(symbol.latLng)
+            flightPlan2D.clear()
 
         }
     }
@@ -271,6 +276,9 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
 
     private fun drawFlightPlan() {
 
+        symbolManager.removeDragListener(symbolDragListener)
+
+
         if (polygonCoordinates.size < 3) return
 
         confirmFlightButton.visibility = View.VISIBLE
@@ -298,26 +306,24 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
 
             flightPlan = FlightPlanner.createFlightPlan(newPoints, 95.0f, polygonCoordinates)
 
-            for (coordinate in flightPlan) {
-                flightPlan2D.add(LocationCoordinate2D(coordinate.latitude, coordinate.longitude))
-            }
-
             flightPlanLine?.let { line ->
                 lineManager.delete(line)
                 symbolManager.delete(flightPathSymbols)
             }
 
-            for (point in flightPlan) {
+            for (coordinate in flightPlan) {
+                flightPlan2D.add(LocationCoordinate2D(coordinate.latitude, coordinate.longitude))
 
                 val flightPathSymbol: Symbol = symbolManager.create(
                     SymbolOptions()
-                        .withLatLng(LatLng(point))
+                        .withLatLng(LatLng(coordinate))
                         .withIconImage("ic_waypoint_marker_unvisited")
                         .withIconSize(0.5f)
                 )
 
                 flightPathSymbols.add(flightPathSymbol)
             }
+
 
             val lineOptions: LineOptions = LineOptions()
                 .withLatLngs(flightPlan)
@@ -337,6 +343,8 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
             showOriginalControls()
             e.printStackTrace()
         }
+
+        symbolManager.addDragListener(symbolDragListener)
     }
 
     private fun enableLocationComponent(loadedMapStyle: Style) {
