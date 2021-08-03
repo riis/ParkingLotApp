@@ -28,4 +28,6 @@
     <string name="no">No</string>
     <string name="yes">Yes</string>
 
+    <string name="compass_value">compass value</string>
+    <string name="align">align</string>
 </resources>
