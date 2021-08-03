@@ -250,8 +250,8 @@ class MavicMiniMissionOperator(context: Context) {
  * @param b: The second point
  * @return: The square of the distance between a and b
  */
-    private fun distance(a: LatLng, b: LatLng): Double {
-        return sqrt((a.longitude - b.longitude).pow(2.0) + (a.latitude - b.latitude).pow(2.0))
+    private fun distanceInMeters(a: LatLng, b: LatLng): Double {
+        return sqrt((a.longitude - b.longitude).pow(2.0) + (a.latitude - b.latitude).pow(2.0)) * 111139
     }
 
     //Function used to execute the current waypoint mission
@@ -262,8 +262,8 @@ class MavicMiniMissionOperator(context: Context) {
 
         val pointA = LatLng(waypoints[0].coordinate.latitude, waypoints[0].coordinate.longitude)
         val pointB = LatLng(waypoints[1].coordinate.latitude, waypoints[1].coordinate.longitude)
-        val distanceToTravel = distance(pointA, pointB) * 111139
-        val segmentation_distance = 11.5
+        val distanceToTravel = distanceInMeters(pointA, pointB)
+        val segmentationDistance = 11.5f
         var checkpoint = distanceToTravel
 
 
@@ -281,7 +281,7 @@ class MavicMiniMissionOperator(context: Context) {
                     Log.d(
                         "TESTING",
                         "${
-                            distance(
+                            distanceInMeters(
                                 LatLng(
                                     currentWaypoint.coordinate.latitude,
                                     currentWaypoint.coordinate.longitude
@@ -304,16 +304,15 @@ class MavicMiniMissionOperator(context: Context) {
                     }
 
                     val droneLocation = LatLng(currentLocation.latitude, currentLocation.longitude)
-                    val autoStitchDistance = distance(droneLocation, pointB) * 111139
+                    val autoStitchDistance = distanceInMeters(droneLocation, pointB)
 
 
                     if ((autoStitchDistance > checkpoint - 0.5) && (autoStitchDistance < checkpoint + 0.5)){
-                        checkpoint -= segmentation_distance
+                        checkpoint -= segmentationDistance
                         Log.i("STATUS", "SUPRISE MUTHA FLUFFA $checkpoint")
                         Log.i("STATUS", "$autoStitchDistance meters left")
+                        takePhoto()
                     }
-
-                    Log.i("STATUS", "$autoStitchDistance meters left")
 
 
 

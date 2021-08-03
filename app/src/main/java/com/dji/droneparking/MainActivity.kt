@@ -118,9 +118,6 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main) //setting the activity's content from layout
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
-        this.window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        supportActionBar?.hide();
 
         //getting the mobile device screen dimensions
         val displayMetrics = DisplayMetrics()
