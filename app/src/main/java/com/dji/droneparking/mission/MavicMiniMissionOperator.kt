@@ -47,12 +47,14 @@ class MavicMiniMissionOperator(context: Context) {
     private lateinit var sendDataTask: SendDataTask
     private lateinit var mLocationListener: LocationListener //uninitialized implementation of LocationListener interface
     private var travelledLongitude = false
+    private var travelledLatitude = false
     private var waypointTracker = 0
     private lateinit var polylineOptions: PolylineOptions
     private lateinit var map: GoogleMap
     private lateinit var polyline: Polyline
     private var originalLongitudeDiff = -1.0
     private var originalLatitudeDiff = -1.0
+    private var directions: Direction = Direction(altitude = 0f)
 
     init {
         initFlightController()
@@ -216,70 +218,79 @@ class MavicMiniMissionOperator(context: Context) {
                     sendDataTimer.cancel()
                     sendDataTimer = Timer()
 
-                    when {
-                        //when the longitude difference becomes insignificant:
-                        abs(longitudeDiff) < 0.000002 && !travelledLongitude -> {
-                            travelledLongitude = true
-                            Log.i("STATUS", "finished travelling LONGITUDE")
-                            sendDataTimer.cancel() //cancel all scheduled data tasks
-                        }
-                        //when the latitude difference becomes insignificant and there
-                        //... is no longitude difference (current waypoint has been reached):
-                        abs(latitudeDiff) < 0.000002 && travelledLongitude -> {
-                            //move to the next waypoint in the waypoints list
-                            waypointTracker++
-                            Log.i("STATUS", "finished travelling LATITUDE")
-                            if (waypointTracker < waypoints.size) {
-                                currentWaypoint = waypoints[waypointTracker]
-                                travelledLongitude = false
-                                originalLatitudeDiff = -1.0
-                                originalLongitudeDiff = -1.0
+                    //MOVE IN LONGITUDE DIRECTION
+                    if (!travelledLongitude) {//!travelledLongitude
+                        val speed = kotlin.math.max(
+                            (mission.autoFlightSpeed * (abs(longitudeDiff) / (originalLongitudeDiff))).toFloat(),
+                            0.5f
+                        )
 
-                            } else { //If all waypoints have been reached, stop the mission
-                                state = WaypointMissionState.EXECUTION_STOPPING
-                                stopMission { error ->
-                                    state = WaypointMissionState.INITIAL_PHASE
-                                    showToast(
-                                        activity,
-                                        "Mission Ended: " + if (error == null) "Successfully" else error.description
-                                    )
-                                }
-                                sendDataTimer.cancel()
-                            }
-
-                            sendDataTimer.cancel() //cancel all scheduled data tasks
-                        }
-
-                        //MOVE IN LONGITUDE DIRECTION
-                        !travelledLongitude -> {//!travelledLongitude
-
-                            val speed = kotlin.math.max(
-                                (mission.autoFlightSpeed * (abs(longitudeDiff) / (originalLongitudeDiff))).toFloat(),
-                                0.5f
-                            )
-
-                            chooseDirection(
-                                longitudeDiff,
-                                Direction(pitch = speed),
-                                Direction(pitch = -speed)
-                            )
-                        }
-
-                        //MOVE IN LATITUDE DIRECTION IF LONGITUDE IS DONE
-                        travelledLongitude -> {//travelledLongitude
-
-                            val speed = kotlin.math.max(
-                                (mission.autoFlightSpeed * (abs(latitudeDiff) / (originalLatitudeDiff))).toFloat(),
-                                0.5f
-                            )
-
-                            chooseDirection(
-                                latitudeDiff,
-                                Direction(roll = speed),
-                                Direction(roll = -speed)
-                            )
+                        if (longitudeDiff > 0) {
+                            directions.pitch = speed
+                        } else {
+                            directions.pitch = -speed
                         }
                     }
+
+                    //MOVE IN LATITUDE DIRECTION IF LONGITUDE IS DONE
+                    if (!travelledLatitude) {
+
+                        val speed = kotlin.math.max(
+                            (mission.autoFlightSpeed * (abs(latitudeDiff) / (originalLatitudeDiff))).toFloat(),
+                            0.5f
+                        )
+
+                        if (latitudeDiff > 0) {
+                            directions.roll = speed
+                        } else {
+                            directions.roll = -speed
+                        }
+                    }
+
+                    //when the longitude difference becomes insignificant:
+                    if (abs(longitudeDiff) < 0.000002) {
+                        Log.i("STATUS", "finished travelling LONGITUDE")
+//                            sendDataTimer.cancel() //cancel all scheduled data tasks
+                        directions.pitch = 0f
+                        travelledLongitude = true
+                    }
+
+
+                    if (abs(latitudeDiff) < 0.000002) {
+                        Log.i("STATUS", "finished travelling LATITUDE")
+                        directions.roll = 0f
+                        travelledLatitude = true
+                    }
+
+                    //when the latitude difference becomes insignificant and there
+                    //... is no longitude difference (current waypoint has been reached):
+                    if (travelledLatitude && travelledLongitude) {
+                        //move to the next waypoint in the waypoints list
+                        waypointTracker++
+                        if (waypointTracker < waypoints.size) {
+                            currentWaypoint = waypoints[waypointTracker]
+                            originalLatitudeDiff = -1.0
+                            originalLongitudeDiff = -1.0
+                            travelledLongitude = false
+                            travelledLatitude = false
+                            directions = Direction()
+                        } else { //If all waypoints have been reached, stop the mission
+                            state = WaypointMissionState.EXECUTION_STOPPING
+                            stopMission { error ->
+                                state = WaypointMissionState.INITIAL_PHASE
+                                showToast(
+                                    activity,
+                                    "Mission Ended: " + if (error == null) "Successfully" else error.description
+                                )
+                            }
+                        }
+
+                        sendDataTimer.cancel() //cancel all scheduled data tasks
+                    } else {
+                        directions.altitude = currentWaypoint.altitude
+                        move(directions)
+                    }
+
 
                 })
 
@@ -349,9 +360,9 @@ class MavicMiniMissionOperator(context: Context) {
     }
 
     inner class Direction(
-        val pitch: Float = 0f,
-        val roll: Float = 0f,
-        val yaw: Float = 0f,
-        val altitude: Float = currentWaypoint.altitude
+        var pitch: Float = 0f,
+        var roll: Float = 0f,
+        var yaw: Float = 0f,
+        var altitude: Float = currentWaypoint.altitude
     )
 }
