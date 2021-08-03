@@ -260,6 +260,13 @@ class MavicMiniMissionOperator(context: Context) {
 
         state = WaypointMissionState.EXECUTION_STARTING
 
+        val pointA = LatLng(waypoints[0].coordinate.latitude, waypoints[0].coordinate.longitude)
+        val pointB = LatLng(waypoints[1].coordinate.latitude, waypoints[1].coordinate.longitude)
+        val distanceToTravel = distance(pointA, pointB) * 111139
+        val segmentation_distance = 11.5
+        var checkpoint = distanceToTravel
+
+
         //running the execution in a coroutine to prevent blocking the main thread
         activity.lifecycleScope.launch {
             withContext(Dispatchers.Main) {
@@ -297,13 +304,16 @@ class MavicMiniMissionOperator(context: Context) {
                     }
 
                     val droneLocation = LatLng(currentLocation.latitude, currentLocation.longitude)
-                    val pointA = LatLng(waypoints[1].coordinate.latitude, waypoints[1].coordinate.longitude)
                     val autoStitchDistance = distance(droneLocation, pointA) * 111139
 
 
+                    if ((autoStitchDistance > checkpoint - 0.5) && (autoStitchDistance < checkpoint + 0.5)){
+                        Log.i("STATUS", "SUPRISE MUTHA FLUFFA")
+                        Log.i("STATUS", "$autoStitchDistance meters left")
+                        checkpoint -= segmentation_distance
+                    }
 
 
-                    Log.i("STATUS", "$autoStitchDistance meters left")
 
 
                     //terminating the sendDataTimer and creating a new one
