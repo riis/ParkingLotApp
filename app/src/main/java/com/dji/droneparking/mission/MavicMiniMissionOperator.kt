@@ -370,13 +370,7 @@ class MavicMiniMissionOperator(context: Context) {
                             directions = Direction()
                         } else { //If all waypoints have been reached, stop the mission
                             state = WaypointMissionState.EXECUTION_STOPPING
-                            stopMission { error ->
-                                state = WaypointMissionState.INITIAL_PHASE
-                                showToast(
-                                    activity,
-                                    "Mission Ended: " + if (error == null) "Successfully" else error.description
-                                )
-                            }
+                            stopMission(null)
                         }
 
                         sendDataTimer.cancel() //cancel all scheduled data tasks
