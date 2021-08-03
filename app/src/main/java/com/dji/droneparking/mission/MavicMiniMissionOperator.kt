@@ -7,6 +7,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
+import com.dji.droneparking.mission.DJIDemoApplication.getCameraInstance
 import com.dji.droneparking.mission.Tools.showToast
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.LatLng
@@ -35,6 +36,7 @@ import kotlin.math.sqrt
 
 
 private const val TAG = "MavicMiniMissionOperator"
+private const val TAG2 = "APPLEPIE"
 
 class MavicMiniMissionOperator(context: Context) {
 
@@ -180,12 +182,14 @@ class MavicMiniMissionOperator(context: Context) {
                 activity.lifecycleScope.launch {
                     camera.startShootPhoto { djiErrorSecond ->
                         if (djiErrorSecond == null) {
-                            Log.i("STATUS","take photo: success")
+                            Log.d(TAG2,"take photo: success")
                         } else {
-                            Log.i("STATUS","Take Photo Failure: ${djiError?.description}")
+                            Log.d(TAG2,"Take Photo Failure: ${djiError?.description}")
                         }
                     }
                 }
+            }else{
+                Log.d(TAG2,"BANANA")
             }
         }
 
@@ -265,6 +269,16 @@ class MavicMiniMissionOperator(context: Context) {
         val distanceToTravel = distanceInMeters(pointA, pointB)
         val segmentationDistance = 11.5f
         var checkpoint = distanceToTravel
+
+        val camera: Camera = getCameraInstance() ?: return
+
+        camera.setMode(SettingsDefinitions.CameraMode.SHOOT_PHOTO) { error ->
+            if (error == null) {
+                showToast(activity, "Switch Camera Mode Succeeded")
+            } else {
+                showToast(activity, "Switch Camera Error: ${error.description}")
+            }
+        }
 
 
         //running the execution in a coroutine to prevent blocking the main thread
