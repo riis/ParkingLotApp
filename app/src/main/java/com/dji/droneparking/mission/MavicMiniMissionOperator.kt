@@ -12,6 +12,7 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Polyline
 import com.google.android.gms.maps.model.PolylineOptions
+import dji.common.camera.SettingsDefinitions
 import dji.common.error.DJIError
 import dji.common.error.DJIMissionError
 import dji.common.flightcontroller.virtualstick.*
@@ -21,6 +22,7 @@ import dji.common.mission.waypoint.WaypointMission
 import dji.common.mission.waypoint.WaypointMissionState
 import dji.common.model.LocationCoordinate2D
 import dji.common.util.CommonCallbacks
+import dji.sdk.camera.Camera
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -164,6 +166,29 @@ class MavicMiniMissionOperator(context: Context) {
 
             }
         }
+    }
+
+    //Function for taking a a single photo using the DJI Product's camera
+    private fun takePhoto() {
+        val camera: Camera = DJIDemoApplication.getCameraInstance() ?: return
+
+        // Setting the camera capture mode to SINGLE, and then taking a photo using the camera.
+        // If the resulting callback for each operation returns an error that is null, then the two operations are successful.
+        val photoMode = SettingsDefinitions.ShootPhotoMode.SINGLE
+        camera.setShootPhotoMode(photoMode) { djiError ->
+            if (djiError == null) {
+                activity.lifecycleScope.launch {
+                    camera.startShootPhoto { djiErrorSecond ->
+                        if (djiErrorSecond == null) {
+                            Log.i("STATUS","take photo: success")
+                        } else {
+                            Log.i("STATUS","Take Photo Failure: ${djiError?.description}")
+                        }
+                    }
+                }
+            }
+        }
+
     }
 
 

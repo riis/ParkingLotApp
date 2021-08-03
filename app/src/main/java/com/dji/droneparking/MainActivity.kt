@@ -1,9 +1,11 @@
 package com.dji.droneparking
 
 import android.app.AlertDialog
+import android.app.ProgressDialog
 import android.graphics.SurfaceTexture
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.TextureView
@@ -14,21 +16,28 @@ import androidx.cardview.widget.CardView
 import com.dji.droneparking.mission.DJIDemoApplication
 import com.dji.droneparking.mission.MavicMiniMissionOperator
 import com.dji.droneparking.mission.Tools.showToast
+import com.dji.droneparking.mission.PhotoStitcher
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.*
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import dji.common.camera.SettingsDefinitions
 import dji.common.error.DJIError
 import dji.common.error.DJIMissionError
 import dji.common.gimbal.*
 import dji.common.mission.waypoint.*
 import dji.common.product.Model
 import dji.common.util.CommonCallbacks
+import dji.log.DJILog
 import dji.sdk.base.BaseProduct
 import dji.sdk.camera.Camera
 import dji.sdk.camera.VideoFeeder
 import dji.sdk.codec.DJICodecManager
 import dji.sdk.gimbal.Gimbal
+import dji.sdk.media.FetchMediaTaskScheduler
+import dji.sdk.media.MediaFile
+import dji.sdk.media.MediaManager
 import dji.sdk.sdkmanager.DJISDKManager
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.roundToInt
 
@@ -87,6 +96,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     private var screenWidth = 0
 
     private lateinit var gimbal: Gimbal
+    private var photoStitcherInstance: PhotoStitcher? = null
 
     companion object {
         const val TAG = "GSDemoActivity"
@@ -98,11 +108,15 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         }
     }
 
+
+
+
     //Creating the activity
     override fun onCreate(savedInstanceState: Bundle?) {
 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main) //setting the activity's content from layout
+
 
         //getting the mobile device screen dimensions
         val displayMetrics = DisplayMetrics()
@@ -159,6 +173,8 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
     override fun onStart() {
         super.onStart()
+
+        getPhotoStitcher()
 
         toggleButton.setOnClickListener {
             isCameraShowing = !isCameraShowing
@@ -253,7 +269,14 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         upload.setOnClickListener(this)
         autoStitch.setOnClickListener(this)
         alignButton.setOnClickListener(this)
+
+
     }
+
+
+
+
+
 
     //Function that initializes the display for the videoSurface TextureView
     private fun initPreviewer() {
@@ -603,5 +626,14 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             }
 
         return instance
+    }
+
+    //Gets an instance of the MavicMiniMissionOperator class and gives this activity's context as input
+    private fun getPhotoStitcher(): PhotoStitcher? {
+
+        if (photoStitcherInstance == null)
+            photoStitcherInstance = PhotoStitcher(this)
+
+        return photoStitcherInstance
     }
 }
