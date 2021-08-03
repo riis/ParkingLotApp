@@ -10,6 +10,8 @@ import android.util.DisplayMetrics
 import android.util.Log
 import android.view.TextureView
 import android.view.View
+import android.view.Window
+import android.view.WindowManager
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
@@ -116,7 +118,9 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main) //setting the activity's content from layout
-
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        this.window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        supportActionBar?.hide();
 
         //getting the mobile device screen dimensions
         val displayMetrics = DisplayMetrics()
@@ -417,7 +421,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         val home = LatLng(droneLocationLat, droneLocationLng)
         markWaypoint(home)
 
-        val point = LatLng(droneLocationLat, droneLocationLng + 0.00018)
+        val point = LatLng(droneLocationLat, droneLocationLng + 0.00054)
         markWaypoint(point)
 
         val homePoint = Waypoint(home.latitude, home.longitude, altitude)

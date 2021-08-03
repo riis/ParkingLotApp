@@ -304,14 +304,16 @@ class MavicMiniMissionOperator(context: Context) {
                     }
 
                     val droneLocation = LatLng(currentLocation.latitude, currentLocation.longitude)
-                    val autoStitchDistance = distance(droneLocation, pointA) * 111139
+                    val autoStitchDistance = distance(droneLocation, pointB) * 111139
 
 
                     if ((autoStitchDistance > checkpoint - 0.5) && (autoStitchDistance < checkpoint + 0.5)){
-                        Log.i("STATUS", "SUPRISE MUTHA FLUFFA")
-                        Log.i("STATUS", "$autoStitchDistance meters left")
                         checkpoint -= segmentation_distance
+                        Log.i("STATUS", "SUPRISE MUTHA FLUFFA $checkpoint")
+                        Log.i("STATUS", "$autoStitchDistance meters left")
                     }
+
+                    Log.i("STATUS", "$autoStitchDistance meters left")
 
 
 
