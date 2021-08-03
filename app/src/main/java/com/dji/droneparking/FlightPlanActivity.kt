@@ -66,6 +66,63 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
     private var droneSymbol: Symbol? = null
     private lateinit var symbolManager: SymbolManager
 
+    private val symbolDragListener = object : OnSymbolDragListener {
+        override fun onAnnotationDrag(symbol: Symbol) {}
+
+        override fun onAnnotationDragFinished(symbol: Symbol) {
+
+            symbols.add(symbol)
+
+            val point = symbol.latLng
+            var minDistanceIndex = -1
+            var nextIndex: Int
+
+            confirmFlightButton.visibility = View.GONE
+
+            if (polygonCoordinates.size < 3) {
+                polygonCoordinates.add(point)
+                updatePoly()
+            } else {
+                var minDistance = Double.MAX_VALUE
+
+                for (i in polygonCoordinates.indices) {
+
+                    nextIndex = if (i == polygonCoordinates.size - 1) {
+                        0
+                    } else {
+                        i + 1
+                    }
+
+                    val distance: Double =
+                        distanceToSegment(polygonCoordinates[i], polygonCoordinates[nextIndex], point)
+
+                    if (distance < minDistance) {
+                        minDistance = distance
+                        minDistanceIndex = i + 1
+                    }
+                }
+
+                polygonCoordinates.add(minDistanceIndex, point)
+                updatePoly()
+
+                try {
+                    drawFlightPlan()
+                } catch (ignored: Exception) {
+                }
+            }
+
+            layoutConfirmPlan.visibility = View.VISIBLE
+
+        }
+
+        override fun onAnnotationDragStarted(symbol: Symbol) {
+
+            symbols.remove(symbol)
+            polygonCoordinates.remove(symbol.latLng)
+
+        }
+    }
+
     private var polygonCoordinates: MutableList<LatLng> = ArrayList()
 
     private lateinit var fillManager: FillManager
@@ -140,8 +197,11 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
 
             fillManager = FillManager(mapFragment.view as MapView, mapboxMap, style)
             lineManager = LineManager(mapFragment.view as MapView, mapboxMap, style)
+
             symbolManager = SymbolManager(mapFragment.view as MapView, mapboxMap, style)
             symbolManager.iconAllowOverlap = true
+            symbolManager.addDragListener(symbolDragListener)
+
         }
 
         val position = CameraPosition.Builder()
