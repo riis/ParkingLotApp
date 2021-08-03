@@ -45,7 +45,7 @@ class WaypointMissionManager(
 
         operator.uploadMission { djiError: DJIError? ->
             if (djiError != null) {
-                Log.e("MISSION", "Upload error: " + djiError.getDescription())
+                Log.e("MISSION", "Upload error: " + djiError.description)
                 if (flightStopped) {
                     return@uploadMission
                 }
@@ -68,7 +68,7 @@ class WaypointMissionManager(
                 updateToast("Something went wrong, check GPS.!")
                 Log.e(
                     "MISSION_FAILED",
-                    "Mission completion failed: " + djiError.getDescription()
+                    "Mission completion failed: " + djiError.description
                 )
                 return@startMission
             }
@@ -82,7 +82,7 @@ class WaypointMissionManager(
         operator.stopMission { djiError: DJIError? ->
             if (djiError != null) {
                 updateToast("Could not cancel flight!")
-                Log.e("MISSION_FAILED", "Could not cancel mission: " + djiError.getDescription())
+                Log.e("MISSION_FAILED", "Could not cancel mission: " + djiError.description)
                 return@stopMission
             }
             updateToast("Flight cancelled.")

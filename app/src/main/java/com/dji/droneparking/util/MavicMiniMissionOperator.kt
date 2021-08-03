@@ -3,11 +3,9 @@ package com.dji.droneparking.util
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
-import com.dji.droneparking.util.DJIDemoApplication
 import com.dji.droneparking.util.Tools.showToast
 import dji.common.camera.SettingsDefinitions
 import dji.common.error.DJIError
@@ -27,7 +25,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
 import kotlin.math.abs
-import kotlin.math.log
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -43,7 +40,8 @@ class MavicMiniMissionOperator(context: Context) {
     private lateinit var waypoints: MutableList<Waypoint>
     private lateinit var currentWaypoint: Waypoint
 
-    private var locationListener: LocationListener? = null //uninitialized implementation of LocationListener interface
+    private var locationListener: LocationListener? =
+        null //uninitialized implementation of LocationListener interface
     private var operatorListener: WaypointMissionOperatorListener? = null
     private lateinit var currentDroneLocation: LocationCoordinate2D
     private var droneLocationLiveData: MutableLiveData<LocationCoordinate2D> = MutableLiveData()
@@ -52,7 +50,8 @@ class MavicMiniMissionOperator(context: Context) {
     private var travelledLatitude = false
     private var waypointTracker = 0
 
-    private var sendDataTimer = Timer() //used to schedule tasks for future execution in a background thread
+    private var sendDataTimer =
+        Timer() //used to schedule tasks for future execution in a background thread
     private lateinit var sendDataTask: SendDataTask
 
     private var originalLongitudeDiff = -1.0
@@ -74,7 +73,7 @@ class MavicMiniMissionOperator(context: Context) {
         fun onLocationUpdate(location: LocationCoordinate2D)
     }
 
-    fun interface CompassListener{
+    fun interface CompassListener {
         fun onHeadingUpdate(heading: Float)
     }
 
@@ -116,7 +115,7 @@ class MavicMiniMissionOperator(context: Context) {
     }
 
     //This function is called by MainActivity to create a new LocationListener implementation inside it.
-    //mLocationListener is then set to this implementation.
+    //locationListener is then set to this implementation.
     fun setLocationListener(listener: LocationListener) {
         this.locationListener = listener
     }
@@ -125,7 +124,7 @@ class MavicMiniMissionOperator(context: Context) {
         this.mCompassListener = listener
     }
 
-    fun alignHeading(){
+    fun alignHeading() {
 
         DJIDemoApplication.getFlightController()?.startTakeoff { error ->
             if (error == null) {
@@ -142,8 +141,7 @@ class MavicMiniMissionOperator(context: Context) {
                                     SendDataTask(0f, 0f, 0f, 1.2f)
                                 sendDataTimer.schedule(sendDataTask, 0, 200)
 
-                            }
-                            else {
+                            } else {
                                 DJIDemoApplication.getFlightController()?.startLanding { error ->
                                     if (error == null) {
                                         this.cancel()
@@ -173,9 +171,9 @@ class MavicMiniMissionOperator(context: Context) {
                 activity.lifecycleScope.launch {
                     camera.startShootPhoto { djiErrorSecond ->
                         if (djiErrorSecond == null) {
-                            Log.i("STATUS","take photo: success")
+                            Log.i("STATUS", "take photo: success")
                         } else {
-                            Log.i("STATUS","Take Photo Failure: ${djiError?.description}")
+                            Log.i("STATUS", "Take Photo Failure: ${djiError?.description}")
                         }
                     }
                 }
@@ -237,7 +235,7 @@ class MavicMiniMissionOperator(context: Context) {
  * @param b: The second point
  * @return: The square of the distance between a and b
  */
-    private fun distance(a: LatLng, b: LatLng): Double {
+    private fun distance(a: LocationCoordinate2D, b: LocationCoordinate2D): Double {
         return sqrt((a.longitude - b.longitude).pow(2.0) + (a.latitude - b.latitude).pow(2.0))
     }
 
@@ -263,10 +261,14 @@ class MavicMiniMissionOperator(context: Context) {
                         "TESTING",
                         "${
                             distance(
-                                LatLng(
+                                LocationCoordinate2D(
                                     currentWaypoint.coordinate.latitude,
                                     currentWaypoint.coordinate.longitude
-                                ), LatLng(currentLocation.latitude, currentLocation.longitude)
+                                ),
+                                LocationCoordinate2D(
+                                    currentLocation.latitude,
+                                    currentLocation.longitude
+                                )
                             )
                         }"
                     )
@@ -284,8 +286,12 @@ class MavicMiniMissionOperator(context: Context) {
                         originalLongitudeDiff = abs(longitudeDiff)
                     }
 
-                    val droneLocation = LatLng(currentLocation.latitude, currentLocation.longitude)
-                    val pointA = LatLng(waypoints[1].coordinate.latitude, waypoints[1].coordinate.longitude)
+                    val droneLocation =
+                        LocationCoordinate2D(currentLocation.latitude, currentLocation.longitude)
+                    val pointA = LocationCoordinate2D(
+                        waypoints[1].coordinate.latitude,
+                        waypoints[1].coordinate.longitude
+                    )
                     val autoStitchDistance = distance(droneLocation, pointA) * 111139
 
 
@@ -418,7 +424,7 @@ class MavicMiniMissionOperator(context: Context) {
         this.operatorListener = listener
     }
 
-    fun removeListener(){
+    fun removeListener() {
         this.operatorListener = null
     }
 

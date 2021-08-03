@@ -29,7 +29,7 @@ fun distance(a: LatLng, b: LatLng): Double {
 fun distanceToSegment(a: LatLng, b: LatLng, point: LatLng): Double {
     // Find length of the segment, break if it's zero. That is a==b; just use distance formula
     val lengthSquared = distance(a, b)
-    if(lengthSquared == 0.0) {
+    if (lengthSquared == 0.0) {
         return distance(a, point)
     }
 
@@ -56,7 +56,7 @@ fun distanceToSegment(a: LatLng, b: LatLng, point: LatLng): Double {
 }
 
 private operator fun Double.times(matrix: Array<Vector>): Matrix {
-    return Matrix(matrix.size){ index ->
+    return Matrix(matrix.size) { index ->
         matrix[index].map { value ->
             value * this
         }.toDoubleArray()
@@ -67,7 +67,7 @@ private operator fun Vector.minus(other: Vector): Vector {
     val result = Vector(this.size)
 
     // Just (this - other) at each index
-    for(i in this.indices) {
+    for (i in this.indices) {
         result[i] = this[i] - other[i]
     }
 
@@ -82,8 +82,8 @@ private operator fun Matrix.minus(other: Matrix): Matrix {
     val result = Matrix(this.size) { Vector(other[0].size) }
 
     // Subtract (this - other) at each coordinate and put into result
-    for(i in this.indices) {
-        for(j in this[0].indices) {
+    for (i in this.indices) {
+        for (j in this[0].indices) {
             result[i][j] = this[i][j] - other[i][j]
         }
     }
@@ -95,8 +95,8 @@ private operator fun Matrix.times(value: Double): Matrix {
     val result = Matrix(this.size) { Vector(this[0].size) }
 
     // Multiply (this * value) at all locations and put into result
-    for(i in this.indices) {
-        for(j in this[0].indices) {
+    for (i in this.indices) {
+        for (j in this[0].indices) {
             result[i][j] = this[i][j] * value
         }
     }
@@ -118,9 +118,9 @@ private operator fun Matrix.times(other: Matrix): Matrix {
     val result = Matrix(firstRows) { Vector(secondCols) }
 
     // Actually multiply them together
-    for(i in this.indices) {
-        for(j in other.indices) {
-            for(k in other[0].indices) {
+    for (i in this.indices) {
+        for (j in other.indices) {
+            for (k in other[0].indices) {
                 result[i][j] += this[i][k] * other[k][j]
             }
         }
@@ -132,8 +132,8 @@ private operator fun Matrix.times(other: Matrix): Matrix {
 private operator fun Matrix.plus(other: Matrix): Matrix {
     val result = Matrix(this.size) { Vector(this[0].size) }
 
-    for(i in this.indices) {
-        for(j in this[0].indices) {
+    for (i in this.indices) {
+        for (j in this[0].indices) {
             result[i][j] = this[i][j] + other[i][j]
         }
     }

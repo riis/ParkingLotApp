@@ -9,7 +9,6 @@ import android.widget.Toast
 import java.util.*
 
 
-
 object Tools {
     private const val DOWNSAMPLE_FACTOR = 2
 
