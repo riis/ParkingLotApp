@@ -1,9 +1,11 @@
 package com.dji.droneparking
 
 import android.app.AlertDialog
+import android.app.ProgressDialog
 import android.graphics.SurfaceTexture
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.TextureView
@@ -14,18 +16,28 @@ import androidx.cardview.widget.CardView
 import com.dji.droneparking.mission.DJIDemoApplication
 import com.dji.droneparking.mission.MavicMiniMissionOperator
 import com.dji.droneparking.mission.Tools.showToast
+import com.dji.droneparking.mission.PhotoStitcher
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.*
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import dji.common.camera.SettingsDefinitions
+import dji.common.error.DJIError
+import dji.common.error.DJIMissionError
 import dji.common.gimbal.*
 import dji.common.mission.waypoint.*
 import dji.common.product.Model
+import dji.common.util.CommonCallbacks
+import dji.log.DJILog
 import dji.sdk.base.BaseProduct
 import dji.sdk.camera.Camera
 import dji.sdk.camera.VideoFeeder
 import dji.sdk.codec.DJICodecManager
 import dji.sdk.gimbal.Gimbal
+import dji.sdk.media.FetchMediaTaskScheduler
+import dji.sdk.media.MediaFile
+import dji.sdk.media.MediaManager
 import dji.sdk.sdkmanager.DJISDKManager
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.roundToInt
 
@@ -50,6 +62,10 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     private lateinit var videoSurface: TextureView
     private lateinit var toggleButton: FloatingActionButton
     private lateinit var cardView: CardView
+    private lateinit var compassTextView: TextView
+
+    private lateinit var autoStitch: Button
+    private lateinit var alignButton: Button
 
     private var isCameraShowing = false
     private var receivedVideoDataListener: VideoFeeder.VideoDataListener? =
@@ -80,6 +96,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     private var screenWidth = 0
 
     private lateinit var gimbal: Gimbal
+    private var photoStitcherInstance: PhotoStitcher? = null
 
     companion object {
         const val TAG = "GSDemoActivity"
@@ -91,11 +108,15 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         }
     }
 
+
+
+
     //Creating the activity
     override fun onCreate(savedInstanceState: Bundle?) {
 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main) //setting the activity's content from layout
+
 
         //getting the mobile device screen dimensions
         val displayMetrics = DisplayMetrics()
@@ -135,6 +156,12 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             }
         }
 
+        getWaypointMissionOperator()?.setCompassListener{ sensorVal ->
+            runOnUiThread {
+                compassTextView.text = sensorVal.toString()
+            }
+        }
+
 
         // The receivedVideoDataListener receives the raw video data and the size of the data from the DJI product.
         // It then sends this data to the codec manager for decoding.
@@ -146,6 +173,8 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
     override fun onStart() {
         super.onStart()
+
+        getPhotoStitcher()
 
         toggleButton.setOnClickListener {
             isCameraShowing = !isCameraShowing
@@ -173,10 +202,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         if (isAdd) {
             markWaypoint(point)
 
-            //TODO 'logic to add waypoint'
-
             val waypoint = Waypoint(point.latitude, point.longitude, altitude)
-// Instantiates a new Polygon object and adds points to define a rectangle
 
             if (waypointMissionBuilder == null) {
                 waypointMissionBuilder =
@@ -214,6 +240,9 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         upload = findViewById(R.id.upload)
         start = findViewById(R.id.start)
         stop = findViewById(R.id.stop)
+        autoStitch = findViewById(R.id.autoStitchButton)
+        compassTextView = findViewById(R.id.compass_text_view)
+        alignButton = findViewById(R.id.align_button)
 
         videoSurface = findViewById(R.id.video_previewer_surface)
         toggleButton = findViewById(R.id.toggle_button)
@@ -238,7 +267,16 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         start.setOnClickListener(this)
         stop.setOnClickListener(this)
         upload.setOnClickListener(this)
+        autoStitch.setOnClickListener(this)
+        alignButton.setOnClickListener(this)
+
+
     }
+
+
+
+
+
 
     //Function that initializes the display for the videoSurface TextureView
     private fun initPreviewer() {
@@ -360,8 +398,41 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             R.id.stop -> {
                 stopWaypointMission()
             }
+            R.id.autoStitchButton ->{
+                autoStitchMission()
+            }
+            R.id.align_button ->{
+                alignDroneHeading()
+            }
             else -> {
             }
+        }
+    }
+
+    private fun alignDroneHeading(){
+        getWaypointMissionOperator()?.alignHeading()
+    }
+
+    private fun autoStitchMission(){
+        val home = LatLng(droneLocationLat, droneLocationLng)
+        markWaypoint(home)
+
+        val point = LatLng(droneLocationLat, droneLocationLng + 0.00018)
+        markWaypoint(point)
+
+        val homePoint = Waypoint(home.latitude, home.longitude, altitude)
+        val waypoint = Waypoint(point.latitude, point.longitude, altitude)
+
+        if (waypointMissionBuilder == null) {
+            waypointMissionBuilder =
+                WaypointMission.Builder()
+                    .also { builder ->
+                        builder.addWaypoint(homePoint)
+                        builder.addWaypoint(waypoint)
+                    }
+        } else {
+            waypointMissionBuilder?.addWaypoint(homePoint)
+            waypointMissionBuilder?.addWaypoint(waypoint)
         }
     }
 
@@ -555,5 +626,14 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             }
 
         return instance
+    }
+
+    //Gets an instance of the MavicMiniMissionOperator class and gives this activity's context as input
+    private fun getPhotoStitcher(): PhotoStitcher? {
+
+        if (photoStitcherInstance == null)
+            photoStitcherInstance = PhotoStitcher(this)
+
+        return photoStitcherInstance
     }
 }
