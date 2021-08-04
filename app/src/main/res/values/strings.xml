@@ -20,7 +20,7 @@
     <string name="cancel_flight_plan">Cancel/Clear Mission</string>
     <string name="confirm_flight_plan">Start Flight</string>
     <string name="cancel_flight">Cancel Flight</string>
-    <string name="stitch_btn">Stitch</string>
+    <string name="stitch_button">Stitch</string>
     <string name="clear_flight_plan">Clear</string>
     <!--Flight Plan Activity Dialog Start Up-->
     <string name="ensure_clear_sd">In order to survey with your drone, you must empty your drone\'s SD card. Would you like to empty it now? Warning: Pressing yes will delete all data on your SD card.</string>

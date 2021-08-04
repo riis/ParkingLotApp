@@ -111,7 +111,7 @@
     </LinearLayout>
 
     <Button
-        android:id="@+id/btn_stitch"
+        android:id="@+id/stitch_button"
         android:layout_width="150dp"
         android:layout_height="66dp"
         android:layout_alignParentEnd="true"
@@ -120,12 +120,12 @@
         android:background="@drawable/ic_rectangle_device_figma"
         android:gravity="center_horizontal"
         android:paddingTop="18dp"
-        android:text="@string/stitch_btn"
+        android:text="@string/stitch_button"
         android:textAlignment="center"
         android:textColor="@color/white" />
 
     <Button
-        android:id="@+id/locate"
+        android:id="@+id/locate_button"
         android:layout_width="150dp"
         android:layout_height="66dp"
         android:layout_alignParentEnd="true"
@@ -170,7 +170,7 @@
             android:textColor="@color/white" />
 
         <Button
-            android:id="@+id/confirm_overlay_btn"
+            android:id="@+id/confirm_overlay_button"
             android:layout_width="124dp"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
