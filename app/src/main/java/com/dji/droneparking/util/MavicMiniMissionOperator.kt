@@ -103,11 +103,12 @@ class MavicMiniMissionOperator(context: Context) {
                 droneLocationLiveData.postValue(currentDroneLocation)
                 locationListener?.onLocationUpdate(currentDroneLocation)
 
-                val heading = DJIDemoApplication.getFlightController()?.compass?.heading
-                if (heading != null) {
-                    mCompassListener.onHeadingUpdate(heading)
-                    compassHeadingLiveData.postValue(heading)
-                }
+                //TODO Implement code in FlightActivity to get code below to work
+//                val heading = DJIDemoApplication.getFlightController()?.compass?.heading
+//                if (heading != null) {
+//                    mCompassListener.onHeadingUpdate(heading)
+//                    compassHeadingLiveData.postValue(heading)
+//                }
 
 
             }
