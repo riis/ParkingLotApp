@@ -363,6 +363,7 @@ class MavicMiniMissionOperator(context: Context) {
                             directions = Direction()
                         } else { //If all waypoints have been reached, stop the mission
                             state = WaypointMissionState.EXECUTION_STOPPING
+                            operatorListener?.onExecutionFinish(null)
                             stopMission(null)
                         }
 
