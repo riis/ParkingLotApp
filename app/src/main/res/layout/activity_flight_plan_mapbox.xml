@@ -124,6 +124,21 @@
         android:textAlignment="center"
         android:textColor="@color/white" />
 
+    <Button
+        android:id="@+id/locate"
+        android:layout_width="150dp"
+        android:layout_height="66dp"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="160dp"
+        android:background="@drawable/ic_rectangle_device_figma"
+        android:gravity="center_horizontal"
+        android:paddingTop="18dp"
+        android:text="locate"
+        android:visibility="gone"
+        android:textAlignment="center"
+        android:textColor="@color/white" />
+
     <LinearLayout
         android:id="@+id/map_help_overlay"
         android:layout_width="match_parent"
@@ -138,7 +153,7 @@
             android:text="Welcome to Flight Planner"
             android:textAlignment="center"
             android:textColor="@color/white"
-            android:textSize="36dp" />
+            android:textSize="36sp" />
 
         <ImageView
             android:layout_width="wrap_content"
