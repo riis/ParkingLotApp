@@ -117,30 +117,58 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
     }
 
-    private fun initUI() {
+    override fun onMapReady(mapboxMap: MapboxMap) {
 
-        startFlightBtn = findViewById(R.id.start_flight_button)
-        cancelFlightBtn = findViewById(R.id.cancel_flight_button)
-        locateBtn = findViewById(R.id.locate_button)
-        val cancelFlightPlanBtn: Button = findViewById(R.id.cancel_flight_plan_button)
-        val getStartedBtn: Button = findViewById(R.id.get_started_button)
+        this.mbMap = mapboxMap
 
-        takeoffWidget = findViewById(R.id.takeoff_widget_flight_plan)
-        layoutConfirmPlan = findViewById(R.id.ll_confirm_flight_plan)
-        layoutCancelPlan = findViewById(R.id.ll_cancel_flight_plan)
+        mapboxMap.setStyle(Style.SATELLITE_STREETS) { style: Style ->
 
-        overlayView = findViewById(R.id.map_help_overlay)
+            var bm: Bitmap? =
+                Tools.bitmapFromVectorDrawable(mContext, R.drawable.ic_waypoint_marker_unvisited)
+            bm?.let { mapboxMap.style?.addImage("ic_waypoint_marker_unvisited", it) }
 
-        aircraft =
-            DJIDemoApplication.getProductInstance() as Aircraft //TODO change this to implement SDKManager or something better
+            bm = Tools.bitmapFromVectorDrawable(mContext, R.drawable.ic_drone)
+            bm?.let { mapboxMap.style?.addImage("ic_drone", it) }
 
-        locateBtn.setOnClickListener(this)
-        getStartedBtn.setOnClickListener(this)
-        startFlightBtn.setOnClickListener(this)
-        cancelFlightPlanBtn.setOnClickListener(this)
-        cancelFlightBtn.setOnClickListener(this)
+            fillManager = FillManager(mapFragment.view as MapView, mapboxMap, style)
+            lineManager = LineManager(mapFragment.view as MapView, mapboxMap, style)
+
+            symbolManager = SymbolManager(mapFragment.view as MapView, mapboxMap, style)
+            symbolManager.iconAllowOverlap = true
+            symbolManager.addDragListener(symbolDragListener)
+
+            operator.setLocationListener { location ->
+                droneLocation = location
+                if (!located) cameraUpdate()
+                updateDroneLocation()
+                located = true
+            }
+        }
+
+        val position = CameraPosition.Builder()
+            .zoom(18.0)
+            .build()
+
+        mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(position))
+
+        mbMap?.addOnMapClickListener(this)
+    }
+
+    override fun onMapClick(point: LatLng): Boolean {
+
+        val symbol = symbolManager.create(
+            SymbolOptions()
+                .withLatLng(LatLng(point))
+                .withIconImage("ic_waypoint_marker_unvisited")
+                .withIconHaloWidth(2.0f)
+                .withDraggable(true)
+        )
 
 
+        //      Add new point to the list
+        configureFlightPlan(symbol)
+
+        return true
     }
 
     override fun onClick(v: View?) {
@@ -195,6 +223,31 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         }
     }
 
+    private fun initUI() {
+
+        startFlightBtn = findViewById(R.id.start_flight_button)
+        cancelFlightBtn = findViewById(R.id.cancel_flight_button)
+        locateBtn = findViewById(R.id.locate_button)
+        val cancelFlightPlanBtn: Button = findViewById(R.id.cancel_flight_plan_button)
+        val getStartedBtn: Button = findViewById(R.id.get_started_button)
+
+        takeoffWidget = findViewById(R.id.takeoff_widget_flight_plan)
+        layoutConfirmPlan = findViewById(R.id.ll_confirm_flight_plan)
+        layoutCancelPlan = findViewById(R.id.ll_cancel_flight_plan)
+
+        overlayView = findViewById(R.id.map_help_overlay)
+
+        aircraft =
+            DJIDemoApplication.getProductInstance() as Aircraft //TODO change this to implement SDKManager or something better
+
+        locateBtn.setOnClickListener(this)
+        getStartedBtn.setOnClickListener(this)
+        startFlightBtn.setOnClickListener(this)
+        cancelFlightPlanBtn.setOnClickListener(this)
+        cancelFlightBtn.setOnClickListener(this)
+
+
+    }
 
     private fun cameraUpdate() {
         if (droneLocation.latitude.isNaN() || droneLocation.longitude.isNaN()) {
@@ -206,60 +259,6 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         runOnUiThread {
             mbMap?.moveCamera(cameraUpdate)
         }
-    }
-
-    override fun onMapReady(mapboxMap: MapboxMap) {
-
-        this.mbMap = mapboxMap
-
-        mapboxMap.setStyle(Style.SATELLITE_STREETS) { style: Style ->
-
-            var bm: Bitmap? =
-                Tools.bitmapFromVectorDrawable(mContext, R.drawable.ic_waypoint_marker_unvisited)
-            bm?.let { mapboxMap.style?.addImage("ic_waypoint_marker_unvisited", it) }
-
-            bm = Tools.bitmapFromVectorDrawable(mContext, R.drawable.ic_drone)
-            bm?.let { mapboxMap.style?.addImage("ic_drone", it) }
-
-            fillManager = FillManager(mapFragment.view as MapView, mapboxMap, style)
-            lineManager = LineManager(mapFragment.view as MapView, mapboxMap, style)
-
-            symbolManager = SymbolManager(mapFragment.view as MapView, mapboxMap, style)
-            symbolManager.iconAllowOverlap = true
-            symbolManager.addDragListener(symbolDragListener)
-
-            operator.setLocationListener { location ->
-                droneLocation = location
-                if (!located) cameraUpdate()
-                updateDroneLocation()
-                located = true
-            }
-        }
-
-        val position = CameraPosition.Builder()
-            .zoom(18.0)
-            .build()
-
-        mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(position))
-
-        mbMap?.addOnMapClickListener(this)
-    }
-
-    override fun onMapClick(point: LatLng): Boolean {
-
-        val symbol = symbolManager.create(
-            SymbolOptions()
-                .withLatLng(LatLng(point))
-                .withIconImage("ic_waypoint_marker_unvisited")
-                .withIconHaloWidth(2.0f)
-                .withDraggable(true)
-        )
-
-
-        //      Add new point to the list
-        configureFlightPlan(symbol)
-
-        return true
     }
 
     private fun configureFlightPlan(symbol: Symbol) {
@@ -475,10 +474,4 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         flightPlan2D.clear()
     }
 
-    private val isNetworkConnected: Boolean
-        get() {
-            val cm: ConnectivityManager =
-                getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            return cm.activeNetworkInfo != null && cm.activeNetworkInfo!!.isConnected
-        }
 }

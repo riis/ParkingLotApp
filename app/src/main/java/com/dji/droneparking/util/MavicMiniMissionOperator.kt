@@ -380,15 +380,6 @@ class MavicMiniMissionOperator(context: Context) {
         }
     }
 
-    //Function used to choose whether the drone should move positively or negatively in the provided direction
-    private fun chooseDirection(difference: Double, dir1: Direction, dir2: Direction) {
-        if (difference > 0) {
-            move(dir1)
-        } else {
-            move(dir2)
-        }
-    }
-
     @SuppressLint("LongLogTag")
     //Function used to move the drone in the provided direction
     private fun move(dir: Direction) {
@@ -399,9 +390,11 @@ class MavicMiniMissionOperator(context: Context) {
     }
 
     fun resumeMission() {
+        //TODO
     }
 
     fun pauseMission() {
+        //TODO
     }
 
     //Function used to stop the current waypoint mission and land the drone
