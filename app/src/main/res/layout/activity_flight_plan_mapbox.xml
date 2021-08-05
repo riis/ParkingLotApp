@@ -1,168 +1,168 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:custom="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
+        xmlns:custom="http://schemas.android.com/apk/res-auto"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
     <androidx.fragment.app.FragmentContainerView
-        android:id="@+id/map"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        class="com.mapbox.mapboxsdk.maps.SupportMapFragment" />
+            android:id="@+id/map"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            class="com.mapbox.mapboxsdk.maps.SupportMapFragment" />
 
     <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/black"
-        android:orientation="horizontal">
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/black"
+            android:orientation="horizontal">
 
         <dji.ux.widget.GPSSignalWidget
-            android:layout_width="44dp"
-            android:layout_height="22dp" />
+                android:layout_width="44dp"
+                android:layout_height="22dp" />
 
         <dji.ux.widget.BatteryWidget
-            android:layout_width="96dp"
-            android:layout_height="22dp"
-            custom:excludeView="singleVoltage" />
+                android:layout_width="96dp"
+                android:layout_height="22dp"
+                custom:excludeView="singleVoltage" />
 
     </LinearLayout>
 
     <TextView
-        android:id="@+id/label_flight_plan"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="1dp"
-        android:text="@string/Flight_Planner"
-        android:textAlignment="center"
-        android:textColor="#FFFFFF"
-        android:textSize="17sp" />
+            android:id="@+id/label_flight_plan"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="1dp"
+            android:text="@string/Flight_Planner"
+            android:textAlignment="center"
+            android:textColor="#FFFFFF"
+            android:textSize="17sp" />
 
     <LinearLayout
-        android:layout_width="40dp"
-        android:layout_height="wrap_content"
-        android:layout_centerVertical="true"
-        android:layout_marginStart="12dp"
-        android:orientation="vertical">
+            android:layout_width="40dp"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="12dp"
+            android:orientation="vertical">
 
         <dji.ux.widget.TakeOffWidget
-            android:id="@+id/takeoff_widget_flight_plan"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_marginBottom="12dp"
-            android:visibility="gone" />
+                android:id="@+id/takeoff_widget_flight_plan"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginBottom="12dp"
+                android:visibility="gone" />
 
         <dji.ux.widget.ReturnHomeWidget
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_marginTop="12dp" />
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginTop="12dp" />
     </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/ll_confirm_flight_plan"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:orientation="horizontal"
-        android:visibility="gone">
+            android:id="@+id/ll_confirm_flight_plan"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:orientation="horizontal"
+            android:visibility="gone">
 
         <Button
-            android:id="@+id/cancel_flight_plan_button"
-            style="?android:attr/buttonBarButtonStyle"
-            android:layout_width="wrap_content"
+                android:id="@+id/cancel_flight_plan_button"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="wrap_content"
 
-            android:layout_height="wrap_content"
-            android:layout_marginStart="0dp"
-            android:layout_weight="0.5"
-            android:background="@drawable/ic_rectangleblacktransparent"
-            android:text="@string/cancel_flight_plan"
-            android:textColor="#FFFFFF" />
+                android:layout_height="wrap_content"
+                android:layout_marginStart="0dp"
+                android:layout_weight="0.5"
+                android:background="@drawable/ic_rectangleblacktransparent"
+                android:text="@string/cancel_flight_plan"
+                android:textColor="#FFFFFF" />
 
         <Button
-            android:id="@+id/start_flight_button"
-            style="?android:attr/buttonBarButtonStyle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="0dp"
-            android:layout_weight="0.5"
-            android:background="@drawable/ic_rectangleblacktransparent"
-            android:text="@string/confirm_flight_plan"
-            android:textColor="#FFFFFF" />
+                android:id="@+id/start_flight_button"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="0dp"
+                android:layout_weight="0.5"
+                android:background="@drawable/ic_rectangleblacktransparent"
+                android:text="@string/confirm_flight_plan"
+                android:textColor="#FFFFFF" />
     </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/ll_cancel_flight_plan"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:orientation="horizontal"
-        android:visibility="gone">
+            android:id="@+id/ll_cancel_flight_plan"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:orientation="horizontal"
+            android:visibility="gone">
 
         <Button
-            android:id="@+id/cancel_flight_button"
-            android:layout_width="0dp"
-            android:layout_height="42dp"
-            android:layout_marginBottom="0dp"
-            android:layout_weight="0.5"
-            android:background="@drawable/ic_rectangleblacktransparent"
-            android:text="@string/cancel_flight"
-            android:textColor="#FFFFFF" />
+                android:id="@+id/cancel_flight_button"
+                android:layout_width="0dp"
+                android:layout_height="42dp"
+                android:layout_marginBottom="0dp"
+                android:layout_weight="0.5"
+                android:background="@drawable/ic_rectangleblacktransparent"
+                android:text="@string/cancel_flight"
+                android:textColor="#FFFFFF" />
     </LinearLayout>
 
     <Button
-        android:id="@+id/locate_button"
-        android:layout_width="150dp"
-        android:layout_height="66dp"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentBottom="true"
-        android:layout_marginBottom="160dp"
-        android:background="@drawable/ic_rectangle_device_figma"
-        android:gravity="center_horizontal"
-        android:paddingTop="18dp"
-        android:text="locate"
-        android:textAlignment="center"
-        android:textColor="@color/white"
-        android:visibility="gone"/>
-
-    <LinearLayout
-        android:id="@+id/map_help_overlay"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#DD000000"
-        android:orientation="vertical">
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="40dp"
-            android:text="Welcome to Flight Planner"
+            android:id="@+id/locate_button"
+            android:layout_width="150dp"
+            android:layout_height="66dp"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentBottom="true"
+            android:layout_marginBottom="160dp"
+            android:background="@drawable/ic_rectangle_device_figma"
+            android:gravity="center_horizontal"
+            android:paddingTop="18dp"
+            android:text="locate"
             android:textAlignment="center"
             android:textColor="@color/white"
-            android:textSize="36sp" />
+            android:visibility="gone" />
 
-        <ImageView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginTop="15dp"
-            android:src="@drawable/ic_trip_pins" />
+    <LinearLayout
+            android:id="@+id/map_help_overlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#DD000000"
+            android:orientation="vertical">
 
         <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Tap on the map to place vertices to define a polygon, then \npress 'Create Flight Plan' to calculate a path for the drone."
-            android:textAlignment="center"
-            android:textColor="@color/white" />
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="40dp"
+                android:text="Welcome to Flight Planner"
+                android:textAlignment="center"
+                android:textColor="@color/white"
+                android:textSize="36sp" />
+
+        <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="15dp"
+                android:src="@drawable/ic_trip_pins" />
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Tap on the map to place vertices to define a polygon, then \npress 'Create Flight Plan' to calculate a path for the drone."
+                android:textAlignment="center"
+                android:textColor="@color/white" />
 
         <Button
-            android:id="@+id/get_started_button"
-            android:layout_width="124dp"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginTop="25dp"
-            android:background="@color/blue_sea"
-            android:text="Get Started"
-            android:textColor="@color/white" />
+                android:id="@+id/get_started_button"
+                android:layout_width="124dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="25dp"
+                android:background="@color/blue_sea"
+                android:text="Get Started"
+                android:textColor="@color/white" />
 
     </LinearLayout>
 </RelativeLayout>

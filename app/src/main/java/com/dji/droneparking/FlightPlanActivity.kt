@@ -110,7 +110,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         dialog.show()
 
         operator.droneLocationLiveData.observe(this, { location ->
-            if(styleReady){
+            if (styleReady) {
                 droneLocation = location
                 if (!located) cameraUpdate()
                 updateDroneLocation()
