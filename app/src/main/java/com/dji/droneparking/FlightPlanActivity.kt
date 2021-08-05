@@ -4,7 +4,6 @@ package com.dji.droneparking
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.net.ConnectivityManager
 import android.os.Bundle
 import android.view.View
 import android.view.WindowManager
@@ -33,8 +32,6 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     MapboxMap.OnMapClickListener, View.OnClickListener {
 
 
-//    private lateinit var downloader: DJIImageDownloader
-
     private var aircraft: Aircraft? = null
     private lateinit var cancelFlightBtn: Button
     private lateinit var overlayView: LinearLayout
@@ -47,6 +44,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
     private var mbMap: MapboxMap? = null
     private lateinit var mapFragment: SupportMapFragment
+    private var styleReady = false
 
     private var polygonCoordinates: MutableList<LatLng> = ArrayList()
 
@@ -101,20 +99,24 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         //TODO implement the DJI Image Downloader Class
 
-//        downloader = DJIImageDownloader(
-//            this,
-//            (application as MApplication).getSdkManager(), null
-//        )
-
         val dialog = AlertDialog.Builder(this)
             .setMessage(R.string.ensure_clear_sd)
             .setTitle(R.string.title_clear_sd)
             .setNegativeButton(R.string.no, null)
-            .setPositiveButton(R.string.yes) { _, _ -> /*downloader.cleanDrone()*/ } // TODO: yes will crash app since downloader not initialized yet
+            .setPositiveButton(R.string.yes) { _, _ -> /*downloader.cleanDrone()*/ }
+            // TODO: yes will crash app since downloader not initialized yet
             .create()
 
         dialog.show()
 
+        operator.droneLocationLiveData.observe(this, { location ->
+            if(styleReady){
+                droneLocation = location
+                if (!located) cameraUpdate()
+                updateDroneLocation()
+                located = true
+            }
+        })
     }
 
     override fun onMapReady(mapboxMap: MapboxMap) {
@@ -123,6 +125,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         mapboxMap.setStyle(Style.SATELLITE_STREETS) { style: Style ->
 
+            styleReady = true
             var bm: Bitmap? =
                 Tools.bitmapFromVectorDrawable(mContext, R.drawable.ic_waypoint_marker_unvisited)
             bm?.let { mapboxMap.style?.addImage("ic_waypoint_marker_unvisited", it) }
@@ -137,12 +140,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             symbolManager.iconAllowOverlap = true
             symbolManager.addDragListener(symbolDragListener)
 
-            operator.setLocationListener { location ->
-                droneLocation = location
-                if (!located) cameraUpdate()
-                updateDroneLocation()
-                located = true
-            }
+
         }
 
         val position = CameraPosition.Builder()

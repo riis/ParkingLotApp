@@ -138,11 +138,11 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             //get an instance of MavicMiniOperationOperator and set up a listener
-            getWaypointMissionOperator()?.setLocationListener { location ->
+            getWaypointMissionOperator()?.droneLocationLiveData?.observe(this, { location ->
                 droneLocationLat = location.latitude
                 droneLocationLng = location.longitude
                 updateDroneLocation()
-            }
+            })
         }
 
         getWaypointMissionOperator()?.setCompassListener { sensorVal ->

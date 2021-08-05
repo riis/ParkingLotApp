@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import com.dji.droneparking.util.Tools.showToast
@@ -40,11 +41,10 @@ class MavicMiniMissionOperator(context: Context) {
     private lateinit var waypoints: MutableList<Waypoint>
     private lateinit var currentWaypoint: Waypoint
 
-    private var locationListener: LocationListener? =
-        null //uninitialized implementation of LocationListener interface
     private var operatorListener: WaypointMissionOperatorListener? = null
     private lateinit var currentDroneLocation: LocationCoordinate2D
-    private var droneLocationLiveData: MutableLiveData<LocationCoordinate2D> = MutableLiveData()
+    private var droneLocationMutableLiveData: MutableLiveData<LocationCoordinate2D> = MutableLiveData()
+    val droneLocationLiveData: LiveData<LocationCoordinate2D> = droneLocationMutableLiveData
 
     private var travelledLongitude = false
     private var travelledLatitude = false
@@ -64,13 +64,6 @@ class MavicMiniMissionOperator(context: Context) {
     init {
         initFlightController()
         activity = context as AppCompatActivity
-    }
-
-
-    //Interface used to listen to the drone's location whenever it gets updated.
-    //When onLocationUpdate() is called, any implementations of LocationListener will receive the drone's location coordinates.
-    fun interface LocationListener {
-        fun onLocationUpdate(location: LocationCoordinate2D)
     }
 
     fun interface CompassListener {
@@ -100,8 +93,8 @@ class MavicMiniMissionOperator(context: Context) {
                     flightControllerState.aircraftLocation.longitude
                 )
 
-                droneLocationLiveData.postValue(currentDroneLocation)
-                locationListener?.onLocationUpdate(currentDroneLocation)
+                droneLocationMutableLiveData.postValue(currentDroneLocation)
+
 
                 //TODO Implement code in FlightActivity to get code below to work
 //                val heading = DJIDemoApplication.getFlightController()?.compass?.heading
@@ -113,12 +106,6 @@ class MavicMiniMissionOperator(context: Context) {
 
             }
         }
-    }
-
-    //This function is called by MainActivity to create a new LocationListener implementation inside it.
-    //locationListener is then set to this implementation.
-    fun setLocationListener(listener: LocationListener) {
-        this.locationListener = listener
     }
 
     fun setCompassListener(listener: CompassListener) {
