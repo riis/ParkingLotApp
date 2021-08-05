@@ -1,10 +1,7 @@
 package com.dji.droneparking
 
 
-import android.Manifest
-import android.app.Activity
 import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.ConnectivityManager
@@ -16,18 +13,12 @@ import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import com.dji.droneparking.util.*
 import com.dji.droneparking.util.Tools.showToast
-import com.mapbox.android.core.permissions.PermissionsListener
-import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.mapboxsdk.Mapbox
+import com.mapbox.mapboxsdk.camera.CameraPosition
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
 import com.mapbox.mapboxsdk.geometry.LatLng
-import com.mapbox.mapboxsdk.location.LocationComponent
-import com.mapbox.mapboxsdk.location.LocationComponentActivationOptions
-import com.mapbox.mapboxsdk.location.modes.CameraMode
-import com.mapbox.mapboxsdk.location.modes.RenderMode
 import com.mapbox.mapboxsdk.maps.*
 import com.mapbox.mapboxsdk.plugins.annotation.*
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory
@@ -38,14 +29,13 @@ import dji.sdk.products.Aircraft
 import dji.ux.widget.TakeOffWidget
 import java.util.*
 
-class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyCallback,
+class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     MapboxMap.OnMapClickListener, View.OnClickListener {
 
 
 //    private lateinit var downloader: DJIImageDownloader
 
     private var aircraft: Aircraft? = null
-    private lateinit var stitchBtn: Button
     private lateinit var cancelFlightBtn: Button
     private lateinit var overlayView: LinearLayout
     private lateinit var layoutConfirmPlan: LinearLayout
@@ -55,16 +45,15 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
     private lateinit var takeoffWidget: TakeOffWidget
     private lateinit var mContext: Context
 
-    private lateinit var permissionsManager: PermissionsManager
-
     private var mbMap: MapboxMap? = null
     private lateinit var mapFragment: SupportMapFragment
+
+    private var polygonCoordinates: MutableList<LatLng> = ArrayList()
 
     private val symbols: MutableList<Symbol> = ArrayList<Symbol>()
     private val flightPathSymbols: MutableList<Symbol> = ArrayList<Symbol>()
     private var droneSymbol: Symbol? = null
     private lateinit var symbolManager: SymbolManager
-
     private val symbolDragListener = object : OnSymbolDragListener {
         override fun onAnnotationDrag(symbol: Symbol) {}
 
@@ -80,8 +69,6 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
         }
     }
 
-    private var polygonCoordinates: MutableList<LatLng> = ArrayList()
-
     private lateinit var fillManager: FillManager
     private var fill: Fill? = null
 
@@ -95,6 +82,7 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
     private var manager: WaypointMissionManager? = null
     private var operator = MavicMiniMissionOperator(this)
     private lateinit var droneLocation: LocationCoordinate2D
+    private var located = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -129,6 +117,85 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
 
     }
 
+    private fun initUI() {
+
+        startFlightBtn = findViewById(R.id.start_flight_button)
+        cancelFlightBtn = findViewById(R.id.cancel_flight_button)
+        locateBtn = findViewById(R.id.locate_button)
+        val cancelFlightPlanBtn: Button = findViewById(R.id.cancel_flight_plan_button)
+        val getStartedBtn: Button = findViewById(R.id.get_started_button)
+
+        takeoffWidget = findViewById(R.id.takeoff_widget_flight_plan)
+        layoutConfirmPlan = findViewById(R.id.ll_confirm_flight_plan)
+        layoutCancelPlan = findViewById(R.id.ll_cancel_flight_plan)
+
+        overlayView = findViewById(R.id.map_help_overlay)
+
+        aircraft =
+            DJIDemoApplication.getProductInstance() as Aircraft //TODO change this to implement SDKManager or something better
+
+        locateBtn.setOnClickListener(this)
+        getStartedBtn.setOnClickListener(this)
+        startFlightBtn.setOnClickListener(this)
+        cancelFlightPlanBtn.setOnClickListener(this)
+        cancelFlightBtn.setOnClickListener(this)
+
+
+    }
+
+    override fun onClick(v: View?) {
+        when (v?.id) {
+            R.id.locate_button -> {
+                updateDroneLocation()
+                cameraUpdate()
+            }
+            R.id.get_started_button -> {
+                overlayView.animate()
+                    .alpha(0.0f)
+                    .translationXBy(1000f)
+                    .setDuration(500)
+                    .setListener(null)
+                    .start()
+
+                locateBtn.visibility = View.VISIBLE
+            }
+            R.id.start_flight_button -> {
+                when (aircraft) {
+                    null -> {
+                        Toast.makeText(mContext, "Please connect to a drone", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+                    else -> {
+
+                        val djiMission: WaypointMission =
+                            FlightPlanner.createFlightMissionFromCoordinates(flightPlan2D)
+
+                        manager = WaypointMissionManager(
+                            djiMission,
+                            operator,
+                            findViewById(R.id.label_flight_plan),
+                            this@FlightPlanActivity
+                        )
+
+                        manager?.startMission()
+                        layoutConfirmPlan.visibility = View.GONE
+                        layoutCancelPlan.visibility = View.VISIBLE
+                    }
+                }
+            }
+            R.id.cancel_flight_button -> {
+                manager?.stopFlight() ?: return
+                clearMapViews()
+                layoutCancelPlan.visibility = View.GONE
+            }
+            R.id.cancel_flight_plan_button -> {
+                layoutConfirmPlan.visibility = View.GONE
+                clearMapViews()
+            }
+        }
+    }
+
+
     private fun cameraUpdate() {
         if (droneLocation.latitude.isNaN() || droneLocation.longitude.isNaN()) {
             return
@@ -136,7 +203,9 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
         val pos = LatLng(droneLocation.latitude, droneLocation.longitude)
         val zoomLevel = 18.0
         val cameraUpdate = CameraUpdateFactory.newLatLngZoom(pos, zoomLevel)
-        mbMap?.moveCamera(cameraUpdate)
+        runOnUiThread {
+            mbMap?.moveCamera(cameraUpdate)
+        }
     }
 
     override fun onMapReady(mapboxMap: MapboxMap) {
@@ -161,10 +230,17 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
 
             operator.setLocationListener { location ->
                 droneLocation = location
+                if (!located) cameraUpdate()
                 updateDroneLocation()
+                located = true
             }
-
         }
+
+        val position = CameraPosition.Builder()
+            .zoom(18.0)
+            .build()
+
+        mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(position))
 
         mbMap?.addOnMapClickListener(this)
     }
@@ -309,71 +385,6 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
         symbolManager.addDragListener(symbolDragListener)
     }
 
-    private fun enableLocationComponent(loadedMapStyle: Style) {
-        // Check if permissions are enabled and if not request
-        if (PermissionsManager.areLocationPermissionsGranted(mContext)) {
-
-            // Get an instance of the component
-            val locationComponent: LocationComponent? = mbMap?.locationComponent
-
-            // Activate with options
-            locationComponent?.activateLocationComponent(
-                LocationComponentActivationOptions.builder(mContext, loadedMapStyle).build()
-            )
-
-            // Set the component's camera mode
-            locationComponent?.cameraMode = CameraMode.TRACKING
-
-            // Set the component's render mode
-            locationComponent?.renderMode = RenderMode.COMPASS
-
-            // Enable to make component visible
-            if (ActivityCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                ) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-
-                permissionsManager = PermissionsManager(mContext as PermissionsListener?)
-                permissionsManager.requestLocationPermissions(mContext as Activity?)
-                return
-
-            }
-
-            locationComponent?.isLocationComponentEnabled = true
-
-        } else {
-            permissionsManager = PermissionsManager(mContext as PermissionsListener?)
-            permissionsManager.requestLocationPermissions(mContext as Activity?)
-        }
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
-    }
-
-    override fun onExplanationNeeded(permissionsToExplain: List<String?>?) {
-        Toast.makeText(this, "Need your location", Toast.LENGTH_LONG).show()
-    }
-
-    override fun onPermissionResult(granted: Boolean) {
-        if (granted) {
-            mbMap?.getStyle { loadedMapStyle: Style -> enableLocationComponent(loadedMapStyle) }
-        } else {
-            Toast.makeText(this, "Location permission not granted", Toast.LENGTH_LONG)
-                .show()
-            finish()
-        }
-    }
-
     // Redraw polygons fill after having changed the container values.
     private fun updatePoly() {
 
@@ -400,35 +411,6 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
         fill = fillManager.create(fillOpts)
     }
 
-    private fun initUI() {
-
-        startFlightBtn = findViewById(R.id.start_flight_button)
-        cancelFlightBtn = findViewById(R.id.cancel_flight_button)
-        locateBtn = findViewById(R.id.locate_button)
-        val cancelFlightPlanBtn: Button = findViewById(R.id.cancel_flight_plan_button)
-        stitchBtn = findViewById(R.id.stitch_button)
-        val confirmOverlayBtn: Button = findViewById(R.id.confirm_overlay_button)
-
-        takeoffWidget = findViewById(R.id.takeoff_widget_flight_plan)
-        layoutConfirmPlan = findViewById(R.id.ll_confirm_flight_plan)
-        layoutCancelPlan = findViewById(R.id.ll_cancel_flight_plan)
-
-        overlayView = findViewById(R.id.map_help_overlay)
-
-        aircraft =
-            DJIDemoApplication.getProductInstance() as Aircraft //TODO change this to implement SDKManager or something better
-
-        locateBtn.setOnClickListener(this)
-        confirmOverlayBtn.setOnClickListener(this)
-        startFlightBtn.setOnClickListener (this)
-        cancelFlightPlanBtn.setOnClickListener(this)
-        cancelFlightBtn.setOnClickListener(this)
-
-        stitchBtn.setOnClickListener(this)
-        stitchBtn.translationX = 999f
-
-    }
-
     private fun updateDroneLocation() {
         runOnUiThread {
 
@@ -436,12 +418,16 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
                 return@runOnUiThread
             }
 
-            if (MainActivity.checkGpsCoordination(droneLocation.latitude, droneLocation.longitude)){
+            if (MainActivity.checkGpsCoordination(
+                    droneLocation.latitude,
+                    droneLocation.longitude
+                )
+            ) {
 
                 val pos = LatLng(droneLocation.latitude, droneLocation.longitude)
 
-                droneSymbol?.let {
-                    symbolManager.delete(it)
+                droneSymbol?.let { drone ->
+                    symbolManager.delete(drone)
                 }
 
                 droneSymbol = symbolManager.create(
@@ -457,11 +443,6 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
 
     fun animateNextButton() {
         runOnUiThread {
-            stitchBtn.animate()
-                .alpha(1.0f)
-                .translationX(0f)
-                .setListener(null)
-                .start()
             takeoffWidget.visibility = View.VISIBLE
             cancelFlightBtn.visibility = View.INVISIBLE
             clearMapViews()
@@ -500,69 +481,4 @@ class FlightPlanActivity : AppCompatActivity(), PermissionsListener, OnMapReadyC
                 getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             return cm.activeNetworkInfo != null && cm.activeNetworkInfo!!.isConnected
         }
-
-    override fun onClick(v: View?) {
-        when(v?.id){
-            R.id.locate ->{
-                updateDroneLocation()
-                cameraUpdate()
-            }
-            R.id.confirm_overlay_button ->{
-                overlayView.animate()
-                    .alpha(0.0f)
-                    .translationXBy(1000f)
-                    .setDuration(500)
-                    .setListener(null)
-                    .start()
-            }
-            R.id.start_flight_button ->{
-                when (aircraft) {
-                    null -> {
-                        Toast.makeText(mContext, "Please connect to a drone", Toast.LENGTH_SHORT).show()
-                    }
-                    else -> {
-
-                        val djiMission: WaypointMission =
-                            FlightPlanner.createFlightMissionFromCoordinates(flightPlan2D)
-
-                        manager = WaypointMissionManager(
-                            djiMission,
-                            operator,
-                            findViewById(R.id.label_flight_plan),
-                            this@FlightPlanActivity
-                        )
-
-                        manager?.startMission()
-                        layoutConfirmPlan.visibility = View.GONE
-                        layoutCancelPlan.visibility = View.VISIBLE
-                    }
-                }
-            }
-            R.id.cancel_flight_button ->{
-                manager?.stopFlight() ?: return
-                clearMapViews()
-                layoutCancelPlan.visibility = View.GONE
-            }
-            R.id.cancel_flight_plan_button ->{
-                layoutConfirmPlan.visibility = View.GONE
-                clearMapViews()
-            }
-            //TODO IMPLEMENT ImageProgressActivity to implement this function
-            R.id.stitch_button ->{
-                //            if (isNetworkConnected) {
-//                val intent = Intent(view.context, ImageProgressActivity::class.java)
-//                view.context.startActivity(intent)
-//            } else {
-//                try {
-//                    AlertDialog.Builder(this@FlightPlanActivity)
-//                        .setMessage("No internet connection, please try again once connected to internet")
-//                        .setPositiveButton("OK", null)
-//                        .show()
-//                } catch (e: Exception) {
-//                    Toast.makeText(this@FlightPlanActivity, e.message, Toast.LENGTH_LONG).show()
-//                }
-//            }
-            }
-        }
-    }
 }
