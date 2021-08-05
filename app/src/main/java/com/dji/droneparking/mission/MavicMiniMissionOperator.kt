@@ -187,9 +187,9 @@ class MavicMiniMissionOperator(context: Context) {
                 activity.lifecycleScope.launch {
                     camera.startShootPhoto { djiErrorSecond ->
                         if (djiErrorSecond == null) {
-                            Log.d(TAG2,"take photo: success")
+                            Log.d("BANANAPIE","take photo: success")
                         } else {
-                            Log.d(TAG2,"Take Photo Failure: ${djiErrorSecond.description}")
+                            Log.d("BANANAPIE","Take Photo Failure: ${djiErrorSecond.description}")
                         }
                     }
                 }

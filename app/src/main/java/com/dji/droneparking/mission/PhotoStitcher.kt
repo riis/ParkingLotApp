@@ -1,15 +1,12 @@
 package com.dji.droneparking.mission
 
-import android.app.ProgressDialog
 import android.content.Context
 import android.os.Environment
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.dji.droneparking.MainActivity
 import dji.common.camera.SettingsDefinitions
 import dji.common.error.DJIError
-import dji.log.DJILog
 import dji.sdk.media.DownloadListener
 import dji.sdk.media.FetchMediaTaskScheduler
 import dji.sdk.media.MediaFile
@@ -27,18 +24,17 @@ class PhotoStitcher(context: Context) {
     private var scheduler: FetchMediaTaskScheduler? = null //used to queue and download small content types of media
     private var currentProgress = -1 //integer variable for the current download progress
     private lateinit var photoStorageDir: File
-    private var mLoadingDialog: ProgressDialog? = null
-    private var mDownloadDialog: ProgressDialog? = null
+    private lateinit var mLoadingDialog: LoadingDialog
+    private lateinit var mDownloadDialog: DownloadDialog
     private lateinit var dateString: String
     private val mContext = context
+    private var currentDownloadIndex = 0
 
     init {
         initUI()
         initMediaManager()
         createFileDir()
         activity = context as AppCompatActivity
-        mLoadingDialog = ProgressDialog(context)
-        mDownloadDialog = ProgressDialog(context)
     }
 
    private fun createFileDir(){
@@ -62,63 +58,8 @@ class PhotoStitcher(context: Context) {
    }
 
     private fun initUI(){
-        //Creating a ProgressDialog and configuring its behavioural settings as a loading screen
+        mLoadingDialog = LoadingDialog()
 
-        mLoadingDialog?.let { progressDialog ->
-            progressDialog.setMessage("Please wait")
-            progressDialog.setCanceledOnTouchOutside(false)
-            progressDialog.setCancelable(false)
-        }
-
-        //Creating a ProgressDialog and configuring its behavioural settings as a download progress screen
-
-        mDownloadDialog?.let { progressDialog ->
-            progressDialog.setTitle("Downloading file")
-            progressDialog.setIcon(android.R.drawable.ic_dialog_info)
-            progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL)
-            progressDialog.setCanceledOnTouchOutside(false)
-            progressDialog.setCancelable(true)
-
-            //If the ProgressDialog is cancelled, the MediaManager will stop the downloading process
-            progressDialog.setOnCancelListener {
-                mMediaManager?.exitMediaDownloading()
-            }
-        }
-    }
-
-    //Function used to display the loading ProgressDialog
-    private fun showProgressDialog() {
-        activity.runOnUiThread { mLoadingDialog?.show() }
-    }
-    //Function used to dismiss the loading ProgressDialog
-    private fun hideProgressDialog() {
-        activity.runOnUiThread {
-            mLoadingDialog?.let { progressDialog ->
-                if (progressDialog.isShowing) {
-                    progressDialog.dismiss()
-                }
-            }
-        }
-    }
-
-    //Function used to display the download ProgressDialog
-    private fun showDownloadProgressDialog() {
-        activity.runOnUiThread {
-            mDownloadDialog?.let { progressDialog ->
-                progressDialog.incrementProgressBy(-progressDialog.progress)
-                progressDialog.show()
-            }
-        }
-    }
-    //Function used to dismiss the download ProgressDialog
-    private fun hideDownloadProgressDialog() {
-        activity.runOnUiThread {
-            mDownloadDialog?.let { progressDialog ->
-                if (progressDialog.isShowing) {
-                    progressDialog.dismiss()
-                }
-            }
-        }
     }
 
     //Function that displays toast messages to the user
@@ -165,7 +106,8 @@ class PhotoStitcher(context: Context) {
                             //If the error is null, the operation was successful
                             if (error == null) {
                                 Log.d("BANANAPIE", "Set camera mode is a success")
-                                showProgressDialog() //show the loading screen ProgressDialog
+
+                                mLoadingDialog.show(activity.supportFragmentManager, "testing") //show the loading screen ProgressDialog
                                 getFileList() //update the mediaFileList using the DJI product' SD card
                                 //If the error is not null, alert user
                             } else {
@@ -200,7 +142,7 @@ class PhotoStitcher(context: Context) {
                         //If the error is null, dismiss the loading screen ProgressDialog
                         if (djiError == null) {
                             Log.d("BANANAPIE", "we are in the get file list")
-                            hideProgressDialog()
+                            mLoadingDialog.dismiss()
 
                             //Reset data if the file list state is not incomplete
                             if (currentFileListState != MediaManager.FileListState.INCOMPLETE) {
@@ -216,17 +158,19 @@ class PhotoStitcher(context: Context) {
                             //Older files are now at the top of the mediaFileList, and newer ones are at the bottom.
                             mediaFileList.sortByDescending { it.timeCreated }
 
+
+
                             activity.runOnUiThread {
                                 for (i in mediaFileList.indices) {
                                     Log.d("BANANAPIE", "$i 'th iteration")
                                     downloadFileByIndex(i)
                                 }
                             }
+//                            mDownloadDialog.dismiss()
 
 
                             //If there was an error with refreshing the MediaManager's file list, dismiss the loading progressDialog and alert the user.
                         } else {
-                            hideProgressDialog()
                             Log.d("BANANAPIE","Get Media File List Failed:" + djiError.description)
                         }
                     }
@@ -240,10 +184,10 @@ class PhotoStitcher(context: Context) {
         //if the download fails, dismiss the download progressDialog, alert the user,
         //...and reset currentProgress.
         override fun onFailure(error: DJIError) {
-            hideDownloadProgressDialog()
             Log.d("BANANAPIE", "DOWNLOAD FILE FAILED")
             showToast("Download File Failed" + error.description)
             currentProgress = -1
+            mDownloadDialog.dismiss()
         }
 
         override fun onProgress(total: Long, current: Long) {}
@@ -257,27 +201,22 @@ class PhotoStitcher(context: Context) {
             //getting the current download progress as an integer between 1-100
             val tmpProgress = (1.0 * current / total * 100).toInt()
             Log.d("BANANAPIE","Downloading $tmpProgress")
-
-            if (tmpProgress != currentProgress) {
-                mDownloadDialog?.let {
-                    it.progress = tmpProgress //set tmpProgress as the progress of the download progressDialog
-                    currentProgress = tmpProgress //save tmpProgress to currentProgress
-                }
-            }
         }
 
         //When the download starts, reset currentProgress and show the download ProgressDialog
         override fun onStart() {
             currentProgress = -1
             Log.d("BANANAPIE","Start Download...")
-            showDownloadProgressDialog()
+            mDownloadDialog = DownloadDialog("Downloading ${currentDownloadIndex}/${mediaFileList.size} images ...")
+            mDownloadDialog.show(activity.supportFragmentManager, "asdf")
+//            mDownloadDialog.setText("Downloading ${currentDownloadIndex}/${mediaFileList.size} images ...")
         }
         //When the download successfully finishes, dismiss the download ProgressDialog, alert the user,
         //...and reset currentProgress.
         override fun onSuccess(filePath: String) {
-            hideDownloadProgressDialog()
             Log.d("BANANAPIE","Download File Success:$filePath")
             currentProgress = -1
+            mDownloadDialog.dismiss()
         }
     }
 
@@ -294,6 +233,7 @@ class PhotoStitcher(context: Context) {
         //If the media file's type is JPEG or JSON, download it to photoStorageDir
         if (mediaFileList[index].mediaType == MediaFile.MediaType.JPEG
             || mediaFileList[index].mediaType == MediaFile.MediaType.JSON) {
+                currentDownloadIndex = index
             mediaFileList[index].fetchFileData(photoStorageDir, null, downloadFileListener)
         }
     }
