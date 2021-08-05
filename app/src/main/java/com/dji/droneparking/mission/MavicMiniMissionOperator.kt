@@ -73,9 +73,6 @@ class MavicMiniMissionOperator(context: Context) {
     init {
         initFlightController()
         activity = context as AppCompatActivity
-
-
-
     }
 
 
@@ -365,13 +362,14 @@ class MavicMiniMissionOperator(context: Context) {
                             } else { //If all waypoints have been reached, stop the mission
                                 state = WaypointMissionState.EXECUTION_STOPPING
                                 stopMission { error ->
-                                    getPhotoStitcher()
+                                    Log.i("STATUS", "WE ARE DONEGH")
                                     state = WaypointMissionState.INITIAL_PHASE
                                     showToast(
                                         activity,
                                         "Mission Ended: " + if (error == null) "Successfully" else error.description
                                     )
                                 }
+                                getPhotoStitcher()
                                 sendDataTimer.cancel()
                             }
 

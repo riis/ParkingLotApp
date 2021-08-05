@@ -134,18 +134,19 @@ class PhotoStitcher(context: Context) {
             //clear the mediaFileList
             mediaFileList.clear()
 
-            DJILog.e(MainActivity.TAG, "Product disconnected")
+            Log.d("BANANAPIE", "Product disconnected")
             return
 
             //If there is a DJI product connected to the mobile device...
         } else {
+            Log.d("BANANAPIE", "Product connnected")
             //get an instance of the DJI product's camera
             DJIDemoApplication.getCameraInstance()?.let { camera ->
                 //If the camera supports downloading media from it...
                 if (camera.isMediaDownloadModeSupported) {
+                    Log.d("BANANAPIE", "Download is supported")
                     mMediaManager = camera.mediaManager //get the camera's MediaManager
                     mMediaManager?.let { mediaManager ->
-
                         val updateFileListStateListener =
                             //when the MediaManager's FileListState changes, save the state to currentFileListState
                             MediaManager.FileListStateListener { state -> currentFileListState = state }
@@ -163,21 +164,18 @@ class PhotoStitcher(context: Context) {
                         ) { error ->
                             //If the error is null, the operation was successful
                             if (error == null) {
-                                DJILog.e(MainActivity.TAG, "Set cameraMode success")
+                                Log.d("BANANAPIE", "Set camera mode is a success")
                                 showProgressDialog() //show the loading screen ProgressDialog
                                 getFileList() //update the mediaFileList using the DJI product' SD card
                                 //If the error is not null, alert user
                             } else {
-                                showToast("Set cameraMode failed")
+                                Log.d("BANANAPIE", "Set camera mode is a failure")
                             }
                         }
-
-                        //Setting the scheduler to be the MediaManager's scheduler
-                        scheduler = mediaManager.scheduler
                     }
                 } else {
                     //If the camera doesn't support downloading media from it, alert the user
-                    showToast("Media Download Mode not Supported")
+                    Log.d("BANANAPIE","Media Download Mode not Supported")
                 }
             }
         }
@@ -190,9 +188,9 @@ class PhotoStitcher(context: Context) {
             mMediaManager?.let { mediaManager ->
                 //If the MediaManager's file list state is syncing or deleting, the MediaManager is busy
                 if (currentFileListState == MediaManager.FileListState.SYNCING || currentFileListState == MediaManager.FileListState.DELETING) {
-                    DJILog.e(MainActivity.TAG, "Media Manager is busy.")
+                    Log.d("BANANAPIE", "Media Manager is busy.")
                 } else {
-                    showToast(currentFileListState.toString()) //for debugging
+                    Log.d("BANANAPIE", currentFileListState.toString()) //for debugging
 
                     //refreshing the MediaManager's file list using the connected DJI product's SD card
                     mediaManager.refreshFileListOfStorageLocation(
@@ -200,7 +198,8 @@ class PhotoStitcher(context: Context) {
                     ) { djiError -> //checking the callback error
 
                         //If the error is null, dismiss the loading screen ProgressDialog
-                        if (null == djiError) {
+                        if (djiError == null) {
+                            Log.d("BANANAPIE", "we are in the get file list")
                             hideProgressDialog()
 
                             //Reset data if the file list state is not incomplete
@@ -219,6 +218,7 @@ class PhotoStitcher(context: Context) {
 
                             activity.runOnUiThread {
                                 for (i in mediaFileList.indices) {
+                                    Log.d("BANANAPIE", "$i 'th iteration")
                                     downloadFileByIndex(i)
                                 }
                             }
@@ -227,7 +227,7 @@ class PhotoStitcher(context: Context) {
                             //If there was an error with refreshing the MediaManager's file list, dismiss the loading progressDialog and alert the user.
                         } else {
                             hideProgressDialog()
-                            showToast("Get Media File List Failed:" + djiError.description)
+                            Log.d("BANANAPIE","Get Media File List Failed:" + djiError.description)
                         }
                     }
                 }
@@ -258,25 +258,24 @@ class PhotoStitcher(context: Context) {
             val tmpProgress = (1.0 * current / total * 100).toInt()
             Log.d("BANANAPIE","Downloading $tmpProgress")
 
-            /*
             if (tmpProgress != currentProgress) {
                 mDownloadDialog?.let {
                     it.progress = tmpProgress //set tmpProgress as the progress of the download progressDialog
                     currentProgress = tmpProgress //save tmpProgress to currentProgress
                 }
-            }*/
+            }
         }
 
         //When the download starts, reset currentProgress and show the download ProgressDialog
         override fun onStart() {
             currentProgress = -1
             Log.d("BANANAPIE","Start Download...")
-            //showDownloadProgressDialog()
+            showDownloadProgressDialog()
         }
         //When the download successfully finishes, dismiss the download ProgressDialog, alert the user,
         //...and reset currentProgress.
         override fun onSuccess(filePath: String) {
-            //hideDownloadProgressDialog()
+            hideDownloadProgressDialog()
             Log.d("BANANAPIE","Download File Success:$filePath")
             currentProgress = -1
         }
