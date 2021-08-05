@@ -3,15 +3,19 @@ package com.dji.droneparking.mission
 import android.app.ProgressDialog
 import android.content.Context
 import android.os.Environment
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.dji.droneparking.MainActivity
 import dji.common.camera.SettingsDefinitions
+import dji.common.error.DJIError
 import dji.log.DJILog
+import dji.sdk.media.DownloadListener
 import dji.sdk.media.FetchMediaTaskScheduler
 import dji.sdk.media.MediaFile
 import dji.sdk.media.MediaManager
 import java.io.File
+import java.util.*
 
 class PhotoStitcher(context: Context) {
 
@@ -22,18 +26,40 @@ class PhotoStitcher(context: Context) {
     private var currentFileListState = MediaManager.FileListState.UNKNOWN //variable for the current state of the MediaManager's file list
     private var scheduler: FetchMediaTaskScheduler? = null //used to queue and download small content types of media
     private var currentProgress = -1 //integer variable for the current download progress
-    private var photoStorageDir: File
+    private lateinit var photoStorageDir: File
     private var mLoadingDialog: ProgressDialog? = null
     private var mDownloadDialog: ProgressDialog? = null
+    private lateinit var dateString: String
+    private val mContext = context
 
     init {
         initUI()
         initMediaManager()
+        createFileDir()
         activity = context as AppCompatActivity
-        photoStorageDir = File(activity.getExternalFilesDir(Environment.DIRECTORY_PICTURES)!!.path)
         mLoadingDialog = ProgressDialog(context)
         mDownloadDialog = ProgressDialog(context)
     }
+
+   private fun createFileDir(){
+       val calendar = Calendar.getInstance()
+       val year = calendar.get(Calendar.YEAR).toString()
+       val day = calendar.get(Calendar.DAY_OF_MONTH).toString()
+       val month = calendar.get(Calendar.MONTH)+1
+
+
+       dateString = if (month<10){
+           "$year-0$month-$day"
+       } else{
+           "$year-$month-$day"
+       }
+
+       photoStorageDir = File(mContext.getExternalFilesDir(Environment.DIRECTORY_PICTURES)?.path.toString())
+       if(!photoStorageDir.exists()) photoStorageDir.mkdirs()
+       Log.d("BANANAPIE", photoStorageDir.toString())
+
+
+   }
 
     private fun initUI(){
         //Creating a ProgressDialog and configuring its behavioural settings as a loading screen
@@ -191,15 +217,13 @@ class PhotoStitcher(context: Context) {
                             //Older files are now at the top of the mediaFileList, and newer ones are at the bottom.
                             mediaFileList.sortByDescending { it.timeCreated }
 
-                            //Resume the scheduler. This will allow it to start executing any tasks in its download queue.
-                            scheduler?.let { schedulerSafe ->
-                                schedulerSafe.resume { error ->
-                                    //if the callback error is null, the operation was successful.
-                                    if (error == null) {
-                                        //TODO
-                                    }
+                            activity.runOnUiThread {
+                                for (i in mediaFileList.indices) {
+                                    downloadFileByIndex(i)
                                 }
                             }
+
+
                             //If there was an error with refreshing the MediaManager's file list, dismiss the loading progressDialog and alert the user.
                         } else {
                             hideProgressDialog()
@@ -209,6 +233,69 @@ class PhotoStitcher(context: Context) {
                 }
             }
 
+        }
+    }
+
+    private val downloadFileListener = object: DownloadListener<String> {
+        //if the download fails, dismiss the download progressDialog, alert the user,
+        //...and reset currentProgress.
+        override fun onFailure(error: DJIError) {
+            hideDownloadProgressDialog()
+            Log.d("BANANAPIE", "DOWNLOAD FILE FAILED")
+            showToast("Download File Failed" + error.description)
+            currentProgress = -1
+        }
+
+        override fun onProgress(total: Long, current: Long) {}
+
+        //called every 1 second to show the download rate
+        override fun onRateUpdate(
+            total: Long, //the total size
+            current: Long, //the current download size
+            persize: Long //the download size between two calls
+        ) {
+            //getting the current download progress as an integer between 1-100
+            val tmpProgress = (1.0 * current / total * 100).toInt()
+            Log.d("BANANAPIE","Downloading $tmpProgress")
+
+            /*
+            if (tmpProgress != currentProgress) {
+                mDownloadDialog?.let {
+                    it.progress = tmpProgress //set tmpProgress as the progress of the download progressDialog
+                    currentProgress = tmpProgress //save tmpProgress to currentProgress
+                }
+            }*/
+        }
+
+        //When the download starts, reset currentProgress and show the download ProgressDialog
+        override fun onStart() {
+            currentProgress = -1
+            Log.d("BANANAPIE","Start Download...")
+            //showDownloadProgressDialog()
+        }
+        //When the download successfully finishes, dismiss the download ProgressDialog, alert the user,
+        //...and reset currentProgress.
+        override fun onSuccess(filePath: String) {
+            //hideDownloadProgressDialog()
+            Log.d("BANANAPIE","Download File Success:$filePath")
+            currentProgress = -1
+        }
+    }
+
+    //Function used to download full resolution photos/videos from the DJI product's SD card
+    private fun downloadFileByIndex(index: Int) {
+
+        //If the media file's type is panorama or shallow_focus, don't download it
+        if (mediaFileList[index].mediaType == MediaFile.MediaType.PANORAMA
+            || mediaFileList[index].mediaType == MediaFile.MediaType.SHALLOW_FOCUS
+        ) {
+            return
+        }
+
+        //If the media file's type is JPEG or JSON, download it to photoStorageDir
+        if (mediaFileList[index].mediaType == MediaFile.MediaType.JPEG
+            || mediaFileList[index].mediaType == MediaFile.MediaType.JSON) {
+            mediaFileList[index].fetchFileData(photoStorageDir, null, downloadFileListener)
         }
     }
 

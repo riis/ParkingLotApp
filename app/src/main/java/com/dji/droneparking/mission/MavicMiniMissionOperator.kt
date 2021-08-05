@@ -2,6 +2,7 @@ package com.dji.droneparking.mission
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Environment
 import android.util.Log
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -28,6 +29,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.*
 import kotlin.math.abs
 import kotlin.math.log
@@ -42,6 +44,7 @@ class MavicMiniMissionOperator(context: Context) {
 
     private var state: MissionState = WaypointMissionState.INITIAL_PHASE
     private val activity: AppCompatActivity
+    private val mContext = context
 
     private lateinit var mission: WaypointMission
     private lateinit var waypoints: MutableList<Waypoint>
@@ -64,10 +67,15 @@ class MavicMiniMissionOperator(context: Context) {
     private var segmentCounter = 6.4008
     private lateinit var mCompassListener: CompassListener
     private var compassHeadingLiveData: MutableLiveData<Float> = MutableLiveData()
+    private var photoStitcherInstance: PhotoStitcher? = null
+
 
     init {
         initFlightController()
         activity = context as AppCompatActivity
+
+
+
     }
 
 
@@ -184,7 +192,7 @@ class MavicMiniMissionOperator(context: Context) {
                         if (djiErrorSecond == null) {
                             Log.d(TAG2,"take photo: success")
                         } else {
-                            Log.d(TAG2,"Take Photo Failure: ${djiError?.description}")
+                            Log.d(TAG2,"Take Photo Failure: ${djiErrorSecond.description}")
                         }
                     }
                 }
@@ -323,8 +331,8 @@ class MavicMiniMissionOperator(context: Context) {
 
                     if ((autoStitchDistance > checkpoint - 0.5) && (autoStitchDistance < checkpoint + 0.5)){
                         checkpoint -= segmentationDistance
-                        Log.i("STATUS", "SUPRISE MUTHA FLUFFA $checkpoint")
-                        Log.i("STATUS", "$autoStitchDistance meters left")
+                        Log.d(TAG2, "SUPRISE MUTHA FLUFFA $checkpoint")
+                        Log.d(TAG2, "$autoStitchDistance meters left")
                         takePhoto()
                     }
 
@@ -357,6 +365,7 @@ class MavicMiniMissionOperator(context: Context) {
                             } else { //If all waypoints have been reached, stop the mission
                                 state = WaypointMissionState.EXECUTION_STOPPING
                                 stopMission { error ->
+                                    getPhotoStitcher()
                                     state = WaypointMissionState.INITIAL_PHASE
                                     showToast(
                                         activity,
@@ -439,6 +448,15 @@ class MavicMiniMissionOperator(context: Context) {
     //Function used to upload the
     fun retryUploadMission(callback: CommonCallbacks.CompletionCallback<DJIMissionError>?) {
         uploadMission(callback)
+    }
+
+    //Gets an instance of the MavicMiniMissionOperator class and gives this activity's context as input
+    private fun getPhotoStitcher(): PhotoStitcher? {
+
+        if (photoStitcherInstance == null)
+            photoStitcherInstance = PhotoStitcher(mContext)
+
+        return photoStitcherInstance
     }
 
     /*

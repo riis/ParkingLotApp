@@ -98,7 +98,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     private var screenWidth = 0
 
     private lateinit var gimbal: Gimbal
-    private var photoStitcherInstance: PhotoStitcher? = null
+
 
     companion object {
         const val TAG = "GSDemoActivity"
@@ -175,7 +175,9 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     override fun onStart() {
         super.onStart()
 
-        getPhotoStitcher()
+        //getPhotoStitcher()
+
+
 
         toggleButton.setOnClickListener {
             isCameraShowing = !isCameraShowing
@@ -627,14 +629,5 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
             }
 
         return instance
-    }
-
-    //Gets an instance of the MavicMiniMissionOperator class and gives this activity's context as input
-    private fun getPhotoStitcher(): PhotoStitcher? {
-
-        if (photoStitcherInstance == null)
-            photoStitcherInstance = PhotoStitcher(this)
-
-        return photoStitcherInstance
     }
 }
