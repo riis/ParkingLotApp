@@ -4,7 +4,9 @@ package com.dji.droneparking
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.SurfaceTexture
 import android.os.Bundle
+import android.view.TextureView
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
@@ -12,6 +14,7 @@ import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.cardview.widget.CardView
 import com.dji.droneparking.util.*
 import com.dji.droneparking.util.Tools.showToast
 import com.mapbox.mapboxsdk.Mapbox
@@ -22,14 +25,20 @@ import com.mapbox.mapboxsdk.maps.*
 import com.mapbox.mapboxsdk.plugins.annotation.*
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory
 import com.riis.cattlecounter.util.distanceToSegment
+import dji.common.camera.SettingsDefinitions
 import dji.common.mission.waypoint.WaypointMission
 import dji.common.model.LocationCoordinate2D
+import dji.common.product.Model
+import dji.sdk.base.BaseProduct
+import dji.sdk.camera.Camera
+import dji.sdk.camera.VideoFeeder
+import dji.sdk.codec.DJICodecManager
 import dji.sdk.products.Aircraft
 import dji.ux.widget.TakeOffWidget
 import java.util.*
 
 class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
-    MapboxMap.OnMapClickListener, View.OnClickListener {
+    MapboxMap.OnMapClickListener, View.OnClickListener, TextureView.SurfaceTextureListener {
 
 
     private var aircraft: Aircraft? = null
@@ -41,6 +50,15 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var locateBtn: Button
     private lateinit var takeoffWidget: TakeOffWidget
     private lateinit var mContext: Context
+    private lateinit var cameraBtn: Button
+    private lateinit var videoSurface: TextureView
+    private lateinit var videoView: CardView
+
+    //listener that recieves video data coming from the connected DJI product
+    private var receivedVideoDataListener: VideoFeeder.VideoDataListener? = null
+    //handles the encoding and decoding of video data
+    private var codecManager: DJICodecManager? = null
+    private var isCameraShowing = false
 
     private var mbMap: MapboxMap? = null
     private lateinit var mapFragment: SupportMapFragment
@@ -110,13 +128,26 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         dialog.show()
 
         operator.droneLocationLiveData.observe(this, { location ->
-            if(styleReady){
+
+            if (styleReady) {
+
                 droneLocation = location
-                if (!located) cameraUpdate()
+
+                if (!located) {
+                    cameraUpdate()
+                    located = true
+                }
+
                 updateDroneLocation()
-                located = true
+
             }
         })
+
+        // The receivedVideoDataListener receives the raw video data and the size of the data from the DJI product.
+        // It then sends this data to the codec manager for decoding.
+        receivedVideoDataListener = VideoFeeder.VideoDataListener { videoBuffer, size ->
+            codecManager?.sendDataToDecoder(videoBuffer, size)
+        }
     }
 
     override fun onMapReady(mapboxMap: MapboxMap) {
@@ -184,6 +215,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                     .start()
 
                 locateBtn.visibility = View.VISIBLE
+                cameraBtn.visibility = View.VISIBLE
             }
             R.id.start_flight_button -> {
                 when (aircraft) {
@@ -218,6 +250,96 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                 layoutConfirmPlan.visibility = View.GONE
                 clearMapViews()
             }
+            R.id.camera_button -> {
+                isCameraShowing = !isCameraShowing
+
+                if (isCameraShowing) {
+                    videoView.visibility = View.VISIBLE
+                    cameraBtn.text = "map"
+
+                } else {
+                    videoView.visibility = View.GONE
+                    cameraBtn.text = "camera"
+                }
+            }
+        }
+    }
+
+    //When the MainActivity is created or resumed, initialize the video feed display
+    override fun onResume() {
+        super.onResume()
+        initPreviewer()
+    }
+
+    //When a TextureView's SurfaceTexture is ready for use, use it to initialize the codecManager
+    override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+        if (codecManager == null) {
+            codecManager = DJICodecManager(this, surface, width, height)
+        }
+    }
+
+    //When a SurfaceTexture is updated
+    override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
+
+    //when a SurfaceTexture's size changes
+    override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
+
+    //when a SurfaceTexture is about to be destroyed, uninitialized the codedManager
+    override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+        codecManager?.cleanSurface()
+        codecManager = null
+
+        return false
+    }
+
+    //When the MainActivity is paused, clear the video feed display
+    override fun onPause() {
+        uninitPreviewer()
+        super.onPause()
+    }
+
+    //When the MainActivity is destroyed, clear the video feed display
+    override fun onDestroy() {
+        uninitPreviewer()
+        super.onDestroy()
+    }
+
+    //Function that unitializes the display for the videoSurface TextureView
+    private fun uninitPreviewer() {
+        DJIDemoApplication.getCameraInstance() ?: return
+        VideoFeeder.getInstance().primaryVideoFeed.addVideoDataListener(null)
+
+    }
+
+    private fun switchCameraMode(cameraMode: SettingsDefinitions.CameraMode) {
+        val camera: Camera = DJIDemoApplication.getCameraInstance() ?: return
+
+        camera.setMode(cameraMode) { error ->
+            if (error == null) {
+                showToast(this,"Switch Camera Mode Succeeded")
+            } else {
+                showToast(this,"Switch Camera Error: ${error.description}")
+            }
+        }
+
+    }
+
+    //Function that initializes the display for the videoSurface TextureView
+    private fun initPreviewer() {
+        val product: BaseProduct = DJIDemoApplication.getProductInstance()
+            ?: return //gets an instance of the connected DJI product (null if nonexistent)
+        //if DJI product is disconnected, alert the user
+        if (!product.isConnected) {
+            showToast(this, getString(R.string.disconnected))
+        } else {
+            //if the DJI product is connected and the aircraft model is not unknown, add the recievedVideoDataListener
+            // ... to the primary video feed.
+            videoSurface.surfaceTextureListener = this
+            if (product.model != Model.UNKNOWN_AIRCRAFT) {
+                VideoFeeder.getInstance().primaryVideoFeed.addVideoDataListener(
+                    receivedVideoDataListener
+                )
+            }
         }
     }
 
@@ -234,16 +356,25 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         layoutCancelPlan = findViewById(R.id.ll_cancel_flight_plan)
 
         overlayView = findViewById(R.id.map_help_overlay)
+        videoView = findViewById(R.id.video_view)
 
-        aircraft =
-            DJIDemoApplication.getProductInstance() as Aircraft //TODO change this to implement SDKManager or something better
+        videoSurface = findViewById(R.id.video_previewer_surface)
+        cameraBtn = findViewById(R.id.camera_button)
+
+        switchCameraMode(SettingsDefinitions.CameraMode.SHOOT_PHOTO)
+
+        //Giving videoSurface a listener that checks for when a surface texture is available.
+        //The videoSurface will then display the surface texture, which in this case is a camera video stream.
+        videoSurface.surfaceTextureListener = this
+        //TODO change this to implement SDKManager or something better
+        aircraft = DJIDemoApplication.getProductInstance() as Aircraft
 
         locateBtn.setOnClickListener(this)
         getStartedBtn.setOnClickListener(this)
         startFlightBtn.setOnClickListener(this)
         cancelFlightPlanBtn.setOnClickListener(this)
         cancelFlightBtn.setOnClickListener(this)
-
+        cameraBtn.setOnClickListener(this)
 
     }
 
