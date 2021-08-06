@@ -19,7 +19,7 @@ object FlightPlanner {
     private const val AUTO_FLIGHT_SPEED = 5.0f
 
     /// The altitude to fly at (in m)
-    private const val ALTITUDE = 46.672f
+    private const val ALTITUDE = 20.0f
 
     /// Turns a lits of coordinates constituting a flight plan into a waypoint path.
     fun createFlightMissionFromCoordinates(coords: List<LocationCoordinate2D>): WaypointMission {
