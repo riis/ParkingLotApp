@@ -77,10 +77,10 @@
         <activity android:name=".MainActivity" />
 
         <activity
-            android:screenOrientation="userLandscape"
-            android:configChanges="keyboard|keyboardHidden|orientation"
             android:name=".FlightPlanActivity"
+            android:configChanges="keyboard|keyboardHidden|orientation"
             android:label="@string/title_activity_flight_plan"
+            android:screenOrientation="userLandscape"
             android:theme="@style/Theme.AppCompat.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
