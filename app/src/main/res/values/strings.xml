@@ -30,4 +30,9 @@
 
     <string name="compass_value">compass value</string>
     <string name="align">align</string>
+    <string name="welcome">Welcome to Flight Planner</string>
+    <string name="overlay_text">Tap on the map to place vertices to define a polygon, then \npress \'Create Flight Plan\' to calculate a path for the drone.</string>
+    <string name="get_started">Get Started</string>
+    <string name="camera">camera</string>
+    <string name="locate">locate</string>
 </resources>

@@ -54,7 +54,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var videoSurface: TextureView
     private lateinit var videoView: CardView
 
-    //listener that recieves video data coming from the connected DJI product
+    //listener that receives video data coming from the connected DJI product
     private var receivedVideoDataListener: VideoFeeder.VideoDataListener? = null
     //handles the encoding and decoding of video data
     private var codecManager: DJICodecManager? = null
@@ -255,10 +255,12 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
                 if (isCameraShowing) {
                     videoView.visibility = View.VISIBLE
+                    locateBtn.visibility = View.GONE
                     cameraBtn.text = "map"
 
                 } else {
                     videoView.visibility = View.GONE
+                    locateBtn.visibility = View.VISIBLE
                     cameraBtn.text = "camera"
                 }
             }
@@ -304,7 +306,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         super.onDestroy()
     }
 
-    //Function that unitializes the display for the videoSurface TextureView
+    //Function that uninitializes the display for the videoSurface TextureView
     private fun uninitPreviewer() {
         DJIDemoApplication.getCameraInstance() ?: return
         VideoFeeder.getInstance().primaryVideoFeed.addVideoDataListener(null)
@@ -332,7 +334,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         if (!product.isConnected) {
             showToast(this, getString(R.string.disconnected))
         } else {
-            //if the DJI product is connected and the aircraft model is not unknown, add the recievedVideoDataListener
+            //if the DJI product is connected and the aircraft model is not unknown, add the received VideoDataListener
             // ... to the primary video feed.
             videoSurface.surfaceTextureListener = this
             if (product.model != Model.UNKNOWN_AIRCRAFT) {
