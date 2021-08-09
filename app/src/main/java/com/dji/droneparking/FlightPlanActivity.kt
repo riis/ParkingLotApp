@@ -12,6 +12,7 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
@@ -40,8 +41,9 @@ import java.util.*
 class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     MapboxMap.OnMapClickListener, View.OnClickListener, TextureView.SurfaceTextureListener {
 
+    private val viewModel: FlightPlanActivityViewModel by viewModels()
 
-    private var aircraft: Aircraft? = null
+
     private lateinit var cancelFlightBtn: Button
     private lateinit var overlayView: LinearLayout
     private lateinit var layoutConfirmPlan: LinearLayout
@@ -54,22 +56,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var videoSurface: TextureView
     private lateinit var videoView: CardView
 
-    //listener that receives video data coming from the connected DJI product
-    private var receivedVideoDataListener: VideoFeeder.VideoDataListener? = null
-    //handles the encoding and decoding of video data
-    private var codecManager: DJICodecManager? = null
-    private var isCameraShowing = false
 
-    private var mbMap: MapboxMap? = null
-    private lateinit var mapFragment: SupportMapFragment
-    private var styleReady = false
-
-    private var polygonCoordinates: MutableList<LatLng> = ArrayList()
-
-    private val symbols: MutableList<Symbol> = ArrayList<Symbol>()
-    private val flightPathSymbols: MutableList<Symbol> = ArrayList<Symbol>()
-    private var droneSymbol: Symbol? = null
-    private lateinit var symbolManager: SymbolManager
     private val symbolDragListener = object : OnSymbolDragListener {
         override fun onAnnotationDrag(symbol: Symbol) {}
 
@@ -79,29 +66,17 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         override fun onAnnotationDragStarted(symbol: Symbol) {
 
-            symbols.remove(symbol)
-            polygonCoordinates.remove(symbol.latLng)
+            viewModel.symbols.remove(symbol)
+            viewModel.polygonCoordinates.remove(symbol.latLng)
 
         }
     }
 
-    private lateinit var fillManager: FillManager
-    private var fill: Fill? = null
 
-    private lateinit var lineManager: LineManager
-    private var line: Line? = null
-
-    private var flightPlanLine: Line? = null
-    private var flightPlan: List<LatLng> = ArrayList()
-    private val flightPlan2D: MutableList<LocationCoordinate2D> = ArrayList()
-
-    private var manager: WaypointMissionManager? = null
-    private var operator = MavicMiniMissionOperator(this)
-    private lateinit var droneLocation: LocationCoordinate2D
-    private var located = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        viewModel.operator = MavicMiniMissionOperator(this)
 
         setContentView(R.layout.activity_flight_plan_mapbox)
 
@@ -111,9 +86,9 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         mContext = applicationContext
         Mapbox.getInstance(mContext, getString(R.string.mapbox_api_key))
 
-        mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
-        mapFragment.onCreate(savedInstanceState)
-        mapFragment.getMapAsync(this)
+        viewModel.mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
+        viewModel.mapFragment.onCreate(savedInstanceState)
+        viewModel.mapFragment.getMapAsync(this)
 
         //TODO implement the DJI Image Downloader Class
 
@@ -127,15 +102,15 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         dialog.show()
 
-        operator.droneLocationLiveData.observe(this, { location ->
+        viewModel.operator!!.droneLocationLiveData.observe(this, { location ->
 
-            if (styleReady) {
+            if (viewModel.styleReady) {
 
-                droneLocation = location
+                viewModel.droneLocation = location
 
-                if (!located) {
+                if (!viewModel.located) {
                     cameraUpdate()
-                    located = true
+                    viewModel.located = true
                 }
 
                 updateDroneLocation()
@@ -145,18 +120,18 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         // The receivedVideoDataListener receives the raw video data and the size of the data from the DJI product.
         // It then sends this data to the codec manager for decoding.
-        receivedVideoDataListener = VideoFeeder.VideoDataListener { videoBuffer, size ->
-            codecManager?.sendDataToDecoder(videoBuffer, size)
+        viewModel.receivedVideoDataListener = VideoFeeder.VideoDataListener { videoBuffer, size ->
+            viewModel.codecManager?.sendDataToDecoder(videoBuffer, size)
         }
     }
 
     override fun onMapReady(mapboxMap: MapboxMap) {
 
-        this.mbMap = mapboxMap
+        viewModel.mbMap = mapboxMap
 
         mapboxMap.setStyle(Style.SATELLITE_STREETS) { style: Style ->
 
-            styleReady = true
+            viewModel.styleReady = true
             var bm: Bitmap? =
                 Tools.bitmapFromVectorDrawable(mContext, R.drawable.ic_waypoint_marker_unvisited)
             bm?.let { mapboxMap.style?.addImage("ic_waypoint_marker_unvisited", it) }
@@ -164,12 +139,12 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             bm = Tools.bitmapFromVectorDrawable(mContext, R.drawable.ic_drone)
             bm?.let { mapboxMap.style?.addImage("ic_drone", it) }
 
-            fillManager = FillManager(mapFragment.view as MapView, mapboxMap, style)
-            lineManager = LineManager(mapFragment.view as MapView, mapboxMap, style)
+            viewModel.fillManager = FillManager(viewModel.mapFragment.view as MapView, mapboxMap, style)
+            viewModel.lineManager = LineManager(viewModel.mapFragment.view as MapView, mapboxMap, style)
 
-            symbolManager = SymbolManager(mapFragment.view as MapView, mapboxMap, style)
-            symbolManager.iconAllowOverlap = true
-            symbolManager.addDragListener(symbolDragListener)
+            viewModel.symbolManager = SymbolManager(viewModel.mapFragment.view as MapView, mapboxMap, style)
+            viewModel.symbolManager.iconAllowOverlap = true
+            viewModel.symbolManager.addDragListener(symbolDragListener)
 
 
         }
@@ -180,12 +155,12 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(position))
 
-        mbMap?.addOnMapClickListener(this)
+        viewModel.mbMap?.addOnMapClickListener(this)
     }
 
     override fun onMapClick(point: LatLng): Boolean {
 
-        val symbol = symbolManager.create(
+        val symbol = viewModel.symbolManager.create(
             SymbolOptions()
                 .withLatLng(LatLng(point))
                 .withIconImage("ic_waypoint_marker_unvisited")
@@ -218,7 +193,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                 cameraBtn.visibility = View.VISIBLE
             }
             R.id.start_flight_button -> {
-                when (aircraft) {
+                when (viewModel.aircraft) {
                     null -> {
                         Toast.makeText(mContext, "Please connect to a drone", Toast.LENGTH_SHORT)
                             .show()
@@ -226,23 +201,25 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                     else -> {
 
                         val djiMission: WaypointMission =
-                            FlightPlanner.createFlightMissionFromCoordinates(flightPlan2D)
+                            FlightPlanner.createFlightMissionFromCoordinates(viewModel.flightPlan2D)
 
-                        manager = WaypointMissionManager(
-                            djiMission,
-                            operator,
-                            findViewById(R.id.label_flight_plan),
-                            this@FlightPlanActivity
-                        )
+                        viewModel.manager = viewModel.operator?.let {
+                            WaypointMissionManager(
+                                djiMission,
+                                it,
+                                findViewById(R.id.label_flight_plan),
+                                this@FlightPlanActivity
+                            )
+                        }
 
-                        manager?.startMission()
+                        viewModel.manager?.startMission()
                         layoutConfirmPlan.visibility = View.GONE
                         layoutCancelPlan.visibility = View.VISIBLE
                     }
                 }
             }
             R.id.cancel_flight_button -> {
-                manager?.stopFlight() ?: return
+                viewModel.manager?.stopFlight() ?: return
                 clearMapViews()
                 layoutCancelPlan.visibility = View.GONE
             }
@@ -251,9 +228,9 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                 clearMapViews()
             }
             R.id.camera_button -> {
-                isCameraShowing = !isCameraShowing
+                viewModel.isCameraShowing = !viewModel.isCameraShowing
 
-                if (isCameraShowing) {
+                if (viewModel.isCameraShowing) {
                     videoView.visibility = View.VISIBLE
                     locateBtn.visibility = View.GONE
                     cameraBtn.text = "map"
@@ -275,8 +252,8 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
     //When a TextureView's SurfaceTexture is ready for use, use it to initialize the codecManager
     override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-        if (codecManager == null) {
-            codecManager = DJICodecManager(this, surface, width, height)
+        if (viewModel.codecManager == null) {
+            viewModel.codecManager = DJICodecManager(this, surface, width, height)
         }
     }
 
@@ -288,8 +265,8 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
     //when a SurfaceTexture is about to be destroyed, uninitialized the codedManager
     override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
-        codecManager?.cleanSurface()
-        codecManager = null
+        viewModel.codecManager?.cleanSurface()
+        viewModel.codecManager = null
 
         return false
     }
@@ -339,7 +316,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             videoSurface.surfaceTextureListener = this
             if (product.model != Model.UNKNOWN_AIRCRAFT) {
                 VideoFeeder.getInstance().primaryVideoFeed.addVideoDataListener(
-                    receivedVideoDataListener
+                    viewModel.receivedVideoDataListener
                 )
             }
         }
@@ -369,7 +346,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         //The videoSurface will then display the surface texture, which in this case is a camera video stream.
         videoSurface.surfaceTextureListener = this
         //TODO change this to implement SDKManager or something better
-        aircraft = DJIDemoApplication.getProductInstance() as Aircraft
+        viewModel.aircraft = DJIDemoApplication.getProductInstance() as Aircraft
 
         locateBtn.setOnClickListener(this)
         getStartedBtn.setOnClickListener(this)
@@ -381,20 +358,20 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     }
 
     private fun cameraUpdate() {
-        if (droneLocation.latitude.isNaN() || droneLocation.longitude.isNaN()) {
+        if (viewModel.droneLocation.latitude.isNaN() || viewModel.droneLocation.longitude.isNaN()) {
             return
         }
-        val pos = LatLng(droneLocation.latitude, droneLocation.longitude)
+        val pos = LatLng(viewModel.droneLocation.latitude, viewModel.droneLocation.longitude)
         val zoomLevel = 18.0
         val cameraUpdate = CameraUpdateFactory.newLatLngZoom(pos, zoomLevel)
         runOnUiThread {
-            mbMap?.moveCamera(cameraUpdate)
+            viewModel.mbMap?.moveCamera(cameraUpdate)
         }
     }
 
     private fun configureFlightPlan(symbol: Symbol) {
 
-        symbols.add(symbol)
+        viewModel.symbols.add(symbol)
 
         val point = symbol.latLng
         var minDistanceIndex = -1
@@ -402,24 +379,24 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         startFlightBtn.visibility = View.GONE
 
-        if (polygonCoordinates.size < 3) { // Only Draw Area of Flight Plan
-            polygonCoordinates.add(point)
+        if (viewModel.polygonCoordinates.size < 3) { // Only Draw Area of Flight Plan
+            viewModel.polygonCoordinates.add(point)
             updatePoly()
         } else { // Draw Area and Configure Flight Plan
             var minDistance = Double.MAX_VALUE
 
-            for (i in polygonCoordinates.indices) {
+            for (i in viewModel.polygonCoordinates.indices) {
                 // place new coordinate in list such that the distance between it and the line segment
                 // created by its neighbouring coordinates are minimized
 
-                nextIndex = if (i == polygonCoordinates.size - 1) {
+                nextIndex = if (i == viewModel.polygonCoordinates.size - 1) {
                     0
                 } else {
                     i + 1
                 }
 
                 val distance: Double =
-                    distanceToSegment(polygonCoordinates[i], polygonCoordinates[nextIndex], point)
+                    distanceToSegment(viewModel.polygonCoordinates[i], viewModel.polygonCoordinates[nextIndex], point)
 
                 if (distance < minDistance) {
                     minDistance = distance
@@ -427,7 +404,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                 }
             }
 
-            polygonCoordinates.add(minDistanceIndex, point)
+            viewModel.polygonCoordinates.add(minDistanceIndex, point)
             updatePoly()
 
             try {
@@ -441,10 +418,10 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
     private fun drawFlightPlan() {
 
-        symbolManager.removeDragListener(symbolDragListener) // prevents infinite loop
+        viewModel.symbolManager.removeDragListener(symbolDragListener) // prevents infinite loop
 
 
-        if (polygonCoordinates.size < 3) return
+        if (viewModel.polygonCoordinates.size < 3) return
 
         startFlightBtn.visibility = View.VISIBLE
 
@@ -453,7 +430,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         var maxLat = Int.MIN_VALUE.toDouble()
         var maxLon = Int.MIN_VALUE.toDouble()
 
-        for (c in polygonCoordinates) {
+        for (c in viewModel.polygonCoordinates) {
             if (c.latitude < minLat) minLat = c.latitude
             if (c.latitude > maxLat) maxLat = c.latitude
             if (c.longitude < minLon) minLon = c.longitude
@@ -469,36 +446,36 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         try {
 
-            flightPlan =
-                FlightPlanner.createFlightPlan(newPoints, 95.0f, polygonCoordinates) // get plan
+            viewModel.flightPlan =
+                FlightPlanner.createFlightPlan(newPoints, 95.0f, viewModel.polygonCoordinates) // get plan
 
-            flightPlanLine?.let { line -> // delete on plan on map and reset arrays
-                lineManager.delete(line)
-                symbolManager.delete(flightPathSymbols)
-                flightPlan2D.clear()
-                flightPathSymbols.clear()
+            viewModel.flightPlanLine?.let { line -> // delete on plan on map and reset arrays
+                viewModel.lineManager.delete(line)
+                viewModel.symbolManager.delete(viewModel.flightPathSymbols)
+                viewModel.flightPlan2D.clear()
+                viewModel.flightPathSymbols.clear()
             }
 
-            for (coordinate in flightPlan) { // populate new plan and place markers on map
-                flightPlan2D.add(LocationCoordinate2D(coordinate.latitude, coordinate.longitude))
+            for (coordinate in viewModel.flightPlan) { // populate new plan and place markers on map
+                viewModel.flightPlan2D.add(LocationCoordinate2D(coordinate.latitude, coordinate.longitude))
 
-                val flightPathSymbol: Symbol = symbolManager.create(
+                val flightPathSymbol: Symbol = viewModel.symbolManager.create(
                     SymbolOptions()
                         .withLatLng(LatLng(coordinate))
                         .withIconImage("ic_waypoint_marker_unvisited")
                         .withIconSize(0.5f)
                 )
 
-                flightPathSymbols.add(flightPathSymbol)
+                viewModel.flightPathSymbols.add(flightPathSymbol)
             }
 
 
             val lineOptions: LineOptions = LineOptions()
-                .withLatLngs(flightPlan)
+                .withLatLngs(viewModel.flightPlan)
                 .withLineWidth(2.0f)
                 .withLineColor(PropertyFactory.fillColor(Color.parseColor("#FFFFFF")).value)
 
-            flightPlanLine = lineManager.create(lineOptions)
+            viewModel.flightPlanLine = viewModel.lineManager.create(lineOptions)
 
         } catch (e: FlightPlanner.NotEnoughPointsException) {
 
@@ -512,55 +489,55 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             e.printStackTrace()
         }
 
-        symbolManager.addDragListener(symbolDragListener)
+        viewModel.symbolManager.addDragListener(symbolDragListener)
     }
 
     // Redraw polygons fill after having changed the container values.
     private fun updatePoly() {
 
-        val polygonCoordinatesCopy: MutableList<LatLng> = ArrayList(polygonCoordinates)
-        polygonCoordinatesCopy.add(polygonCoordinates[0])
+        val polygonCoordinatesCopy: MutableList<LatLng> = ArrayList(viewModel.polygonCoordinates)
+        polygonCoordinatesCopy.add(viewModel.polygonCoordinates[0])
 
-        line?.let { lineManager.delete(it) }
+        viewModel.line?.let { viewModel.lineManager.delete(it) }
 
         val lineOpts: LineOptions = LineOptions()
             .withLineColor(PropertyFactory.lineColor("#FFFFFF").value)
             .withLatLngs(polygonCoordinatesCopy)
 
-        line = lineManager.create(lineOpts)
+        viewModel.line = viewModel.lineManager.create(lineOpts)
 
         val fillCoordinates: MutableList<List<LatLng>> = ArrayList()
         fillCoordinates.add(polygonCoordinatesCopy)
 
-        fill?.let { fillManager.delete(it) }
+        viewModel.fill?.let { viewModel.fillManager.delete(it) }
 
         val fillOpts: FillOptions = FillOptions()
             .withFillColor(PropertyFactory.fillColor(Color.parseColor("#81FFFFFF")).value)
             .withLatLngs(fillCoordinates)
 
-        fill = fillManager.create(fillOpts)
+        viewModel.fill = viewModel.fillManager.create(fillOpts)
     }
 
     private fun updateDroneLocation() {
         runOnUiThread {
 
-            if (droneLocation.latitude.isNaN() || droneLocation.longitude.isNaN()) {
+            if (viewModel.droneLocation.latitude.isNaN() || viewModel.droneLocation.longitude.isNaN()) {
                 return@runOnUiThread
             }
 
             if (MainActivity.checkGpsCoordination(
-                    droneLocation.latitude,
-                    droneLocation.longitude
+                    viewModel.droneLocation.latitude,
+                    viewModel.droneLocation.longitude
                 )
             ) {
 
-                val pos = LatLng(droneLocation.latitude, droneLocation.longitude)
+                val pos = LatLng(viewModel.droneLocation.latitude, viewModel.droneLocation.longitude)
 
-                droneSymbol?.let { drone ->
-                    symbolManager.delete(drone)
+                viewModel.droneSymbol?.let { drone ->
+                    viewModel.symbolManager.delete(drone)
                 }
 
-                droneSymbol = symbolManager.create(
+                viewModel.droneSymbol = viewModel.symbolManager.create(
                     SymbolOptions()
                         .withLatLng(pos)
                         .withIconImage("ic_drone")
@@ -585,24 +562,24 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     }
 
     private fun clearMapViews() {
-        if (symbols.size > 0) {
-            symbolManager.delete(symbols)
+        if (viewModel.symbols.size > 0) {
+            viewModel.symbolManager.delete(viewModel.symbols)
         }
 
-        if (flightPathSymbols.size > 0) {
-            symbolManager.delete(flightPathSymbols)
+        if (viewModel.flightPathSymbols.size > 0) {
+            viewModel.symbolManager.delete(viewModel.flightPathSymbols)
         }
 
-        if (flightPlanLine != null) {
-            lineManager.delete(flightPlanLine)
+        if (viewModel.flightPlanLine != null) {
+            viewModel.lineManager.delete(viewModel.flightPlanLine)
         }
 
-        fillManager.delete(fill)
-        lineManager.delete(line)
+        viewModel.fillManager.delete(viewModel.fill)
+        viewModel.lineManager.delete(viewModel.line)
 
-        symbols.clear()
-        polygonCoordinates.clear()
-        flightPlan2D.clear()
+        viewModel.symbols.clear()
+        viewModel.polygonCoordinates.clear()
+        viewModel.flightPlan2D.clear()
     }
 
 }
