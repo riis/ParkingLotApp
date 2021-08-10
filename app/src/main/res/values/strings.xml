@@ -11,6 +11,28 @@
     <string name="shows_a_pop_up_window_displaying_the_drone_s_live_camera_feed">shows a pop-up window displaying the drone\'s live camera feed</string>
     <string name="exit">Exit</string>
     <string name="add">Add</string>
+    <string name="mapbox_api_key">pk.eyJ1Ijoiam9zZWJncyIsImEiOiJja3IzbTl4YWMwMDhwMnBudGcwN285dWExIn0.ztypy24IDPBVQXXrk-cBZg</string>
+
+    <!--Flight Plan Activity-->
+    <string name="Flight_Planner">Flight Planner</string>
+    <string name="title_activity_flight_plan">Map</string>
+    <string name="create_flight_plan">Create Flight Plan</string>
+    <string name="cancel_flight_plan">Cancel/Clear Mission</string>
+    <string name="confirm_flight_plan">Start Flight</string>
+    <string name="cancel_flight">Cancel Flight</string>
+    <string name="stitch_button">Stitch</string>
+    <string name="clear_flight_plan">Clear</string>
+    <!--Flight Plan Activity Dialog Start Up-->
+    <string name="ensure_clear_sd">In order to survey with your drone, you must empty your drone\'s SD card. Would you like to empty it now? Warning: Pressing yes will delete all data on your SD card.</string>
+    <string name="title_clear_sd">Clear SD Card?</string>
+    <string name="no">No</string>
+    <string name="yes">Yes</string>
+
     <string name="compass_value">compass value</string>
     <string name="align">align</string>
+    <string name="welcome">Welcome to Flight Planner</string>
+    <string name="overlay_text">Tap on the map to place vertices to define a polygon, then \npress \'Create Flight Plan\' to calculate a path for the drone.</string>
+    <string name="get_started">Get Started</string>
+    <string name="camera">camera</string>
+    <string name="locate">locate</string>
 </resources>

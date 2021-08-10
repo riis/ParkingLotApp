@@ -1,17 +1,22 @@
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
-    id 'com.google.android.libraries.mapsplatform.secrets-gradle-plugin'
 }
 
 repositories {
     mavenLocal()
 }
 
+Properties properties = new Properties()
+properties.load(project.rootProject.file('local.properties').newDataInputStream())
+def gMapKey = properties.getProperty('MAPS_API_KEY')
+def djiKey = properties.getProperty('DJI_API_KEY')
+
 android {
     compileSdkVersion 30
     buildToolsVersion "30.0.3"
     useLibrary 'org.apache.http.legacy'
+    sourceSets.main.res.filter.exclude '**/DJIImageDownloader.kt'
 
     defaultConfig {
         applicationId 'com.riis.livestream'
@@ -25,8 +30,8 @@ android {
             // above, FFmpeg lib might lead to runtime crashes or warnings.
             abiFilters 'armeabi-v7a', 'x86', 'arm64-v8a'
         }
-
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders = [GOOGLE_MAPS_API_KEY: gMapKey, DJI_API_KEY: djiKey]
     }
 
     buildFeatures {
@@ -112,6 +117,9 @@ dependencies {
 
     //Google Maps
     implementation 'com.google.android.gms:play-services-maps:17.0.1'
+    implementation 'com.mapbox.mapboxsdk:mapbox-android-sdk:9.6.2'
+    implementation 'com.mapbox.mapboxsdk:mapbox-sdk-turf:5.8.0'
+    implementation 'com.mapbox.mapboxsdk:mapbox-android-plugin-annotation-v8:0.7.0'
 
     // ViewModels and Coroutines
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2'

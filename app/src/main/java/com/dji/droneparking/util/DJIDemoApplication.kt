@@ -1,4 +1,4 @@
-package com.dji.droneparking.mission
+package com.dji.droneparking.util
 
 import dji.sdk.base.BaseProduct
 import dji.sdk.camera.Camera
