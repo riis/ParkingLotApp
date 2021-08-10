@@ -5,6 +5,8 @@ import android.os.Environment
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.dji.droneparking.util.DJIDemoApplication
+import com.dji.droneparking.util.DownloadDialog
 import dji.common.camera.SettingsDefinitions
 import dji.common.error.DJIError
 import dji.sdk.media.DownloadListener
@@ -37,25 +39,25 @@ class PhotoStitcher(context: Context) {
         activity = context as AppCompatActivity
     }
 
-   private fun createFileDir(){
-       val calendar = Calendar.getInstance()
-       val year = calendar.get(Calendar.YEAR).toString()
-       val day = calendar.get(Calendar.DAY_OF_MONTH).toString()
-       val month = calendar.get(Calendar.MONTH)+1
+    private fun createFileDir(){
+        val calendar = Calendar.getInstance()
+        val year = calendar.get(Calendar.YEAR).toString()
+        val day = calendar.get(Calendar.DAY_OF_MONTH).toString()
+        val month = calendar.get(Calendar.MONTH)+1
 
 
-       dateString = if (month<10){
-           "$year-0$month-$day"
-       } else{
-           "$year-$month-$day"
-       }
+        dateString = if (month<10){
+            "$year-0$month-$day"
+        } else{
+            "$year-$month-$day"
+        }
 
-       photoStorageDir = File(mContext.getExternalFilesDir(Environment.DIRECTORY_PICTURES)?.path.toString())
-       if(!photoStorageDir.exists()) photoStorageDir.mkdirs()
-       Log.d("BANANAPIE", photoStorageDir.toString())
+        photoStorageDir = File(mContext.getExternalFilesDir(Environment.DIRECTORY_PICTURES)?.path.toString())
+        if(!photoStorageDir.exists()) photoStorageDir.mkdirs()
+        Log.d("BANANAPIE", photoStorageDir.toString())
 
 
-   }
+    }
 
     private fun initUI(){
         mLoadingDialog = LoadingDialog()
@@ -233,7 +235,7 @@ class PhotoStitcher(context: Context) {
         //If the media file's type is JPEG or JSON, download it to photoStorageDir
         if (mediaFileList[index].mediaType == MediaFile.MediaType.JPEG
             || mediaFileList[index].mediaType == MediaFile.MediaType.JSON) {
-                currentDownloadIndex = index
+            currentDownloadIndex = index
             mediaFileList[index].fetchFileData(photoStorageDir, null, downloadFileListener)
         }
     }
@@ -241,3 +243,4 @@ class PhotoStitcher(context: Context) {
 
 
 }
+

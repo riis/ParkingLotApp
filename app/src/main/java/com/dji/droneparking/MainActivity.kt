@@ -16,7 +16,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import com.dji.droneparking.util.DJIDemoApplication
 import com.dji.droneparking.util.MavicMiniMissionOperator
-import com.dji.droneparking.util.PhotoStitcher
+import com.dji.droneparking.mission.PhotoStitcher
 import com.dji.droneparking.util.Tools.showToast
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.*
@@ -108,6 +108,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
 
         //getting the mobile device screen dimensions
         val displayMetrics = DisplayMetrics()
+        windowManager.defaultDisplay.getMetrics(displayMetrics)
         windowManager.defaultDisplay.getMetrics(displayMetrics)
         screenWidth = displayMetrics.widthPixels
         screenHeight = displayMetrics.heightPixels

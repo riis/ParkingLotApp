@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
+import com.dji.droneparking.mission.PhotoStitcher
 import com.dji.droneparking.util.Tools.showToast
 import dji.common.camera.SettingsDefinitions
 import dji.common.error.DJIError
@@ -35,6 +36,7 @@ private const val TAG = "MavicMiniMissionOperator"
 class MavicMiniMissionOperator(context: Context) {
 
     private val activity: AppCompatActivity
+    private val mContext = context
 
     private var state: MissionState = WaypointMissionState.INITIAL_PHASE
     private lateinit var mission: WaypointMission
@@ -61,6 +63,9 @@ class MavicMiniMissionOperator(context: Context) {
     private var segmentCounter = 6.4008
     private lateinit var mCompassListener: CompassListener
     private var compassHeadingLiveData: MutableLiveData<Float> = MutableLiveData()
+
+
+    private var photoStitcherInstance: PhotoStitcher? = null
 
     init {
         initFlightController()
@@ -136,6 +141,15 @@ class MavicMiniMissionOperator(context: Context) {
                 }
             }
         }
+    }
+
+    //Gets an instance of the MavicMiniMissionOperator class and gives this activity's context as input
+    private fun getPhotoStitcher(): PhotoStitcher? {
+
+        if (photoStitcherInstance == null)
+            photoStitcherInstance = PhotoStitcher(mContext)
+
+        return photoStitcherInstance
     }
 
     //Function for taking a a single photo using the DJI Product's camera
@@ -332,6 +346,7 @@ class MavicMiniMissionOperator(context: Context) {
                             travelledLatitude = false
                             directions = Direction()
                         } else { //If all waypoints have been reached, stop the mission
+                            getPhotoStitcher()
                             state = WaypointMissionState.EXECUTION_STOPPING
                             operatorListener?.onExecutionFinish(null)
                             stopMission(null)
