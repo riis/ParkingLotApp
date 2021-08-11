@@ -26,7 +26,7 @@ class PhotoStitcher(context: Context) {
     private var scheduler: FetchMediaTaskScheduler? = null //used to queue and download small content types of media
     private var currentProgress = -1 //integer variable for the current download progress
     private lateinit var photoStorageDir: File
-    private lateinit var mLoadingDialog: LoadingDialog
+//    private lateinit var mLoadingDialog: LoadingDialog
     private lateinit var mDownloadDialog: DownloadDialog
     private lateinit var dateString: String
     private val mContext = context
@@ -60,7 +60,7 @@ class PhotoStitcher(context: Context) {
     }
 
     private fun initUI(){
-        mLoadingDialog = LoadingDialog()
+//        mLoadingDialog = LoadingDialog()
 
     }
 
@@ -102,18 +102,26 @@ class PhotoStitcher(context: Context) {
                         mediaManager.addUpdateFileListStateListener(updateFileListStateListener)
 
                         //Setting the camera mode to media download mode and then receiving an error callback
-                        camera.setMode(
-                            SettingsDefinitions.CameraMode.MEDIA_DOWNLOAD
-                        ) { error ->
-                            //If the error is null, the operation was successful
-                            if (error == null) {
-                                Log.d("BANANAPIE", "Set camera mode is a success")
+                        var setMode = false
+                        for (i in 0..10) {
+                            Thread.sleep(100)
+                            camera.setMode(
+                                SettingsDefinitions.CameraMode.MEDIA_DOWNLOAD
+                            ) { error ->
+                                //If the error is null, the operation was successful
+                                if (error == null) {
+                                    Log.d("BANANAPIE", "Set camera mode is a success")
 
 //                                mLoadingDialog.show(activity.supportFragmentManager, "testing") //show the loading screen ProgressDialog
-                                getFileList() //update the mediaFileList using the DJI product' SD card
-                                //If the error is not null, alert user
-                            } else {
-                                Log.d("BANANAPIE", "Set camera mode is a failure ${error.description}")
+                                    getFileList() //update the mediaFileList using the DJI product' SD card
+                                    //If the error is not null, alert user
+                                    setMode = true
+                                } else {
+                                    Log.d("BANANAPIE", "Set camera mode is a failure ${error.description}")
+                                }
+                            }
+                            if (setMode) {
+                                break
                             }
                         }
                     }
@@ -144,7 +152,7 @@ class PhotoStitcher(context: Context) {
                         //If the error is null, dismiss the loading screen ProgressDialog
                         if (djiError == null) {
                             Log.d("BANANAPIE", "we are in the get file list")
-                            mLoadingDialog.dismiss()
+//                            mLoadingDialog.dismiss()
 
                             //Reset data if the file list state is not incomplete
                             if (currentFileListState != MediaManager.FileListState.INCOMPLETE) {
