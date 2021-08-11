@@ -5,6 +5,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.SurfaceTexture
+import android.media.ImageReader
+import android.media.ImageReader.OnImageAvailableListener
 import android.os.Bundle
 import android.util.Log
 import android.view.TextureView
@@ -40,10 +42,14 @@ import dji.sdk.codec.DJICodecManager
 import dji.sdk.products.Aircraft
 import dji.sdk.sdkmanager.DJISDKManager
 import dji.ux.widget.TakeOffWidget
+import org.tensorflow.lite.support.image.TensorImage
+import org.tensorflow.lite.task.vision.detector.Detection
+import org.tensorflow.lite.task.vision.detector.ObjectDetector
 import java.util.*
 
 class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
-    MapboxMap.OnMapClickListener, View.OnClickListener, TextureView.SurfaceTextureListener {
+    MapboxMap.OnMapClickListener, View.OnClickListener, TextureView.SurfaceTextureListener,
+    OnImageAvailableListener {
 
     private val viewModel: FlightPlanActivityViewModel by viewModels()
 
@@ -78,26 +84,32 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     }
 
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         viewModel.operator = MavicMiniMissionOperator(this)
 
         val rotation = Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).pitch(-90f).build()
-        gimbal = DJISDKManager.getInstance().product.gimbal
-        gimbal.rotate(
-            rotation
-        ) { djiError ->
-            if (djiError == null) {
-                Log.d("STATUS", "rotate gimbal success")
-                Toast.makeText(applicationContext, "rotate gimbal success", Toast.LENGTH_SHORT)
-                    .show()
-            } else {
-                Log.d("STATUS", "rotate gimbal error " + djiError.description)
-                Toast.makeText(applicationContext, djiError.description, Toast.LENGTH_SHORT)
-                    .show()
+        try {
+            gimbal = DJISDKManager.getInstance().product.gimbal
+
+            gimbal.rotate(
+                rotation
+            ) { djiError ->
+                if (djiError == null) {
+                    Log.d("BANANAPIE", "rotate gimbal success")
+                    Toast.makeText(applicationContext, "rotate gimbal success", Toast.LENGTH_SHORT)
+                        .show()
+                } else {
+                    Log.d("BANANAPIE", "rotate gimbal error " + djiError.description)
+                    Toast.makeText(applicationContext, djiError.description, Toast.LENGTH_SHORT)
+                        .show()
+                }
             }
+        } catch (e: Exception) {
+            Log.d("BANANAPIE", "Drone is likely not connected")
         }
+
+
 
         setContentView(R.layout.activity_flight_plan_mapbox)
 
@@ -107,7 +119,8 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         mContext = applicationContext
         Mapbox.getInstance(mContext, getString(R.string.mapbox_api_key))
 
-        viewModel.mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
+        viewModel.mapFragment =
+            supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         viewModel.mapFragment.onCreate(savedInstanceState)
         viewModel.mapFragment.getMapAsync(this)
 
@@ -160,10 +173,13 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             bm = Tools.bitmapFromVectorDrawable(mContext, R.drawable.ic_drone)
             bm?.let { mapboxMap.style?.addImage("ic_drone", it) }
 
-            viewModel.fillManager = FillManager(viewModel.mapFragment.view as MapView, mapboxMap, style)
-            viewModel.lineManager = LineManager(viewModel.mapFragment.view as MapView, mapboxMap, style)
+            viewModel.fillManager =
+                FillManager(viewModel.mapFragment.view as MapView, mapboxMap, style)
+            viewModel.lineManager =
+                LineManager(viewModel.mapFragment.view as MapView, mapboxMap, style)
 
-            viewModel.symbolManager = SymbolManager(viewModel.mapFragment.view as MapView, mapboxMap, style)
+            viewModel.symbolManager =
+                SymbolManager(viewModel.mapFragment.view as MapView, mapboxMap, style)
             viewModel.symbolManager.iconAllowOverlap = true
             viewModel.symbolManager.addDragListener(symbolDragListener)
 
@@ -316,9 +332,9 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         camera.setMode(cameraMode) { error ->
             if (error == null) {
-                showToast(this,"Switch Camera Mode Succeeded")
+                showToast(this, "Switch Camera Mode Succeeded")
             } else {
-                showToast(this,"Switch Camera Error: ${error.description}")
+                showToast(this, "Switch Camera Error: ${error.description}")
             }
         }
 
@@ -417,7 +433,11 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                 }
 
                 val distance: Double =
-                    distanceToSegment(viewModel.polygonCoordinates[i], viewModel.polygonCoordinates[nextIndex], point)
+                    distanceToSegment(
+                        viewModel.polygonCoordinates[i],
+                        viewModel.polygonCoordinates[nextIndex],
+                        point
+                    )
 
                 if (distance < minDistance) {
                     minDistance = distance
@@ -468,7 +488,11 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         try {
 
             viewModel.flightPlan =
-                FlightPlanner.createFlightPlan(newPoints, 95.0f, viewModel.polygonCoordinates) // get plan
+                FlightPlanner.createFlightPlan(
+                    newPoints,
+                    95.0f,
+                    viewModel.polygonCoordinates
+                ) // get plan
 
             viewModel.flightPlanLine?.let { line -> // delete on plan on map and reset arrays
                 viewModel.lineManager.delete(line)
@@ -478,7 +502,12 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             }
 
             for (coordinate in viewModel.flightPlan) { // populate new plan and place markers on map
-                viewModel.flightPlan2D.add(LocationCoordinate2D(coordinate.latitude, coordinate.longitude))
+                viewModel.flightPlan2D.add(
+                    LocationCoordinate2D(
+                        coordinate.latitude,
+                        coordinate.longitude
+                    )
+                )
 
                 val flightPathSymbol: Symbol = viewModel.symbolManager.create(
                     SymbolOptions()
@@ -511,6 +540,10 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         }
 
         viewModel.symbolManager.addDragListener(symbolDragListener)
+    }
+
+    private fun checkGpsCoordination(latitude: Double, longitude: Double): Boolean {
+        return latitude > -90 && latitude < 90 && longitude > -180 && longitude < 180 && latitude != 0.0 && longitude != 0.0
     }
 
     // Redraw polygons fill after having changed the container values.
@@ -546,13 +579,14 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                 return@runOnUiThread
             }
 
-            if (MainActivity.checkGpsCoordination(
+            if (checkGpsCoordination(
                     viewModel.droneLocation.latitude,
                     viewModel.droneLocation.longitude
                 )
             ) {
 
-                val pos = LatLng(viewModel.droneLocation.latitude, viewModel.droneLocation.longitude)
+                val pos =
+                    LatLng(viewModel.droneLocation.latitude, viewModel.droneLocation.longitude)
 
                 viewModel.droneSymbol?.let { drone ->
                     viewModel.symbolManager.delete(drone)
@@ -601,6 +635,65 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         viewModel.symbols.clear()
         viewModel.polygonCoordinates.clear()
         viewModel.flightPlan2D.clear()
+    }
+
+    override fun onImageAvailable(reader: ImageReader?) {
+        videoSurface.bitmap
+    }
+
+    /**
+     * runObjectDetection(bitmap: Bitmap)
+     *      TFLite Object Detection function
+     */
+    private fun runObjectDetection(bitmap: Bitmap) {
+        // Step 1: create TFLite's TensorImage object
+        val image = TensorImage.fromBitmap(bitmap)
+
+        // Step 2: Initialize the detector object
+        val options = ObjectDetector.ObjectDetectorOptions.builder()
+            .setMaxResults(5)
+            .setScoreThreshold(0.5f)
+            .build()
+        val detector = ObjectDetector.createFromFileAndOptions(
+            this, // the application context
+            "model.tflite", // must be same as the filename in assets folder
+            options
+        )
+
+        // Step 3: feed given image to the model and print the detection result
+        val results = detector.detect(image)
+
+        // Step 4: Parse the detection result and show it
+        debugPrint(results)
+//        val resultToDisplay = results.map {
+//            // Get the top-1 category and craft the display text
+//            val category = it.categories.first()
+//            val text = "${category.label}, ${category.score.times(100).toInt()}%"
+//
+//            // Create a data object to display the detection result
+//            DetectionResult(it.boundingBox, text)
+//        }
+//        // Draw the detection result on the bitmap and show it.
+//        val imgWithResult = drawDetectionResult(bitmap, resultToDisplay)
+//        runOnUiThread {
+//            inputImageView.setImageBitmap(imgWithResult)
+//        }
+    }
+
+
+    private fun debugPrint(results: List<Detection>) {
+        for ((i, obj) in results.withIndex()) {
+            val box = obj.boundingBox
+
+            Log.d("BANANAPIE", "Detected object: ${i} ")
+            Log.d("BANANAPIE", "  boundingBox: (${box.left}, ${box.top}) - (${box.right},${box.bottom})")
+
+            for ((j, category) in obj.categories.withIndex()) {
+                Log.d("BANANAPIE", "    Label $j: ${category.label}")
+                val confidence: Int = category.score.times(100).toInt()
+                Log.d("BANANAPIE", "    Confidence: ${confidence}%")
+            }
+        }
     }
 
 }

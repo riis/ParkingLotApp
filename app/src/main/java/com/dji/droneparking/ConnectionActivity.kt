@@ -63,8 +63,8 @@ class ConnectionActivity : AppCompatActivity() {
             resources.getString(R.string.sdk_version, DJISDKManager.getInstance().sdkVersion)
         mBtnOpen.isEnabled = false
         mBtnOpen.setOnClickListener {
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
+            val intent = Intent(this, FlightPlanActivity::class.java)
+            this.startActivity(intent)
         }
     }
 

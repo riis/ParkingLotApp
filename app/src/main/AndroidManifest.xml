@@ -74,8 +74,6 @@
             android:name="com.dji.sdk.API_KEY"
             android:value="${DJI_API_KEY}" />
 
-        <activity android:name=".MainActivity" />
-
         <activity
             android:name=".FlightPlanActivity"
             android:configChanges="keyboard|keyboardHidden|orientation"

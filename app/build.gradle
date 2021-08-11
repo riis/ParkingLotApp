@@ -139,4 +139,6 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
 
     implementation 'androidx.cardview:cardview:1.0.0' //Card views
+
+    implementation 'org.tensorflow:tensorflow-lite-task-vision:0.2.0'
 }
