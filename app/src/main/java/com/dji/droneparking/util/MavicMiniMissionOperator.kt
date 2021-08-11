@@ -22,10 +22,7 @@ import dji.common.model.LocationCoordinate2D
 import dji.common.util.CommonCallbacks
 import dji.sdk.camera.Camera
 import dji.sdk.mission.waypoint.WaypointMissionOperatorListener
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import java.util.*
 import kotlin.math.abs
 import kotlin.math.pow
@@ -352,7 +349,10 @@ class MavicMiniMissionOperator(context: Context) {
                             state = WaypointMissionState.EXECUTION_STOPPING
                             operatorListener?.onExecutionFinish(null)
                             stopMission(null)
+                            getPhotoStitcher()
+                            sendDataTimer.cancel()
                         }
+
 
                         sendDataTimer.cancel() //cancel all scheduled data tasks
                     } else {
@@ -385,7 +385,7 @@ class MavicMiniMissionOperator(context: Context) {
     fun stopMission(callback: CommonCallbacks.CompletionCallback<DJIMissionError>?) {
         showToast(activity, "trying to land")
         DJIDemoApplication.getFlightController()?.startLanding(callback)
-        getPhotoStitcher()
+
     }
 
     //Function used to upload the

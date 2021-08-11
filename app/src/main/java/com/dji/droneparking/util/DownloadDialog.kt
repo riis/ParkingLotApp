@@ -33,7 +33,10 @@ class DownloadDialog(val text: String) : DialogFragment() {
         val dialog: Dialog = builder.create()
         dialog.setCanceledOnTouchOutside(false)
 
+
+
         binding.textView.text = text
+
 
 
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -44,6 +47,10 @@ class DownloadDialog(val text: String) : DialogFragment() {
     fun setText(text: String){
 //        this.text = texts
         return
+    }
+
+    fun setProgress(progress: Int){
+        binding.progressBar.progress = progress
     }
 
     override fun onDestroyView() {

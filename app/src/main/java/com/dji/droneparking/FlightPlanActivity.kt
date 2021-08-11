@@ -42,14 +42,14 @@ import dji.sdk.codec.DJICodecManager
 import dji.sdk.products.Aircraft
 import dji.sdk.sdkmanager.DJISDKManager
 import dji.ux.widget.TakeOffWidget
-import org.tensorflow.lite.support.image.TensorImage
-import org.tensorflow.lite.task.vision.detector.Detection
-import org.tensorflow.lite.task.vision.detector.ObjectDetector
+//import org.tensorflow.lite.support.image.TensorImage
+//import org.tensorflow.lite.task.vision.detector.Detection
+//import org.tensorflow.lite.task.vision.detector.ObjectDetector
 import java.util.*
 
 class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
-    MapboxMap.OnMapClickListener, View.OnClickListener, TextureView.SurfaceTextureListener,
-    OnImageAvailableListener {
+    MapboxMap.OnMapClickListener, View.OnClickListener, TextureView.SurfaceTextureListener
+     { //,OnImageAvailableListener
 
     private val viewModel: FlightPlanActivityViewModel by viewModels()
 
@@ -377,7 +377,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         videoSurface = findViewById(R.id.video_previewer_surface)
         cameraBtn = findViewById(R.id.camera_button)
 
-        switchCameraMode(SettingsDefinitions.CameraMode.SHOOT_PHOTO)
+        //switchCameraMode(SettingsDefinitions.CameraMode.SHOOT_PHOTO)
 
         //Giving videoSurface a listener that checks for when a surface texture is available.
         //The videoSurface will then display the surface texture, which in this case is a camera video stream.
@@ -637,6 +637,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         viewModel.flightPlan2D.clear()
     }
 
+    /*
     override fun onImageAvailable(reader: ImageReader?) {
         videoSurface.bitmap
     }
@@ -695,5 +696,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             }
         }
     }
+    */
+
 
 }
