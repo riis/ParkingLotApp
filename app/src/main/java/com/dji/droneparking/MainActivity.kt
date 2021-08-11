@@ -87,7 +87,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
     private var screenHeight = 0
     private var screenWidth = 0
 
-    private lateinit var gimbal: Gimbal
+
 
 
     companion object {
@@ -120,21 +120,7 @@ class MainActivity : AppCompatActivity(), GoogleMap.OnMapClickListener, OnMapRea
         mapFragment.onCreate(savedInstanceState)
         mapFragment.getMapAsync(this) //callback when onMapReady() is called
 
-        val rotation = Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).pitch(-90f).build()
-        gimbal = DJISDKManager.getInstance().product.gimbal
-        gimbal.rotate(
-            rotation
-        ) { djiError ->
-            if (djiError == null) {
-                Log.d("STATUS", "rotate gimbal success")
-                Toast.makeText(applicationContext, "rotate gimbal success", Toast.LENGTH_SHORT)
-                    .show()
-            } else {
-                Log.d("STATUS", "rotate gimbal error " + djiError.description)
-                Toast.makeText(applicationContext, djiError.description, Toast.LENGTH_SHORT)
-                    .show()
-            }
-        }
+
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             //get an instance of MavicMiniOperationOperator and set up a listener

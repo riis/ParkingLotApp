@@ -8,6 +8,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import com.dji.droneparking.mission.PhotoStitcher
+import com.dji.droneparking.util.DJIDemoApplication.getCameraInstance
 import com.dji.droneparking.util.Tools.showToast
 import dji.common.camera.SettingsDefinitions
 import dji.common.error.DJIError
@@ -64,7 +65,8 @@ class MavicMiniMissionOperator(context: Context) {
     private lateinit var mCompassListener: CompassListener
     private var compassHeadingLiveData: MutableLiveData<Float> = MutableLiveData()
 
-
+    private var distanceToWaypoint = 0.0
+    private var photoTakenToggle = false
     private var photoStitcherInstance: PhotoStitcher? = null
 
     init {
@@ -227,14 +229,24 @@ class MavicMiniMissionOperator(context: Context) {
  * @param b: The second point
  * @return: The square of the distance between a and b
  */
-    private fun distance(a: LocationCoordinate2D, b: LocationCoordinate2D): Double {
-        return sqrt((a.longitude - b.longitude).pow(2.0) + (a.latitude - b.latitude).pow(2.0))
+    private fun distanceInMeters(a: LocationCoordinate2D, b: LocationCoordinate2D): Double {
+        return sqrt((a.longitude - b.longitude).pow(2.0) + (a.latitude - b.latitude).pow(2.0)) * 111139.0
     }
 
     //Function used to execute the current waypoint mission
     private fun executeMission() {
         state = WaypointMissionState.EXECUTION_STARTING
         operatorListener?.onExecutionStart()
+
+        val camera: Camera = getCameraInstance() ?: return
+
+        camera.setMode(SettingsDefinitions.CameraMode.SHOOT_PHOTO) { error ->
+            if (error == null) {
+                showToast(activity, "Switch Camera Mode Succeeded")
+            } else {
+                showToast(activity, "Switch Camera Error: ${error.description}")
+            }
+        }
 
         //running the execution in a coroutine to prevent blocking the main thread
         activity.lifecycleScope.launch {
@@ -247,22 +259,25 @@ class MavicMiniMissionOperator(context: Context) {
 
                     state = WaypointMissionState.EXECUTING
 
-                    // TODO we can get rid of this eventually
-                    Log.d(
-                        "TESTING",
-                        "${
-                            distance(
-                                LocationCoordinate2D(
-                                    currentWaypoint.coordinate.latitude,
-                                    currentWaypoint.coordinate.longitude
-                                ),
-                                LocationCoordinate2D(
-                                    currentLocation.latitude,
-                                    currentLocation.longitude
-                                )
-                            )
-                        }"
+                    distanceToWaypoint = distanceInMeters(
+                        LocationCoordinate2D(
+                            currentWaypoint.coordinate.latitude,
+                            currentWaypoint.coordinate.longitude
+                        ),
+                        LocationCoordinate2D(
+                            currentLocation.latitude,
+                            currentLocation.longitude
+                        )
                     )
+
+                    //If the drone has arrived at the destination, take a photo.
+                    if (!photoTakenToggle && (distanceToWaypoint > -1.5) && (distanceToWaypoint < 1.5)) {//if you havent taken a photo
+                        Log.d("BANANAPIE", "PHOTO TAKEN SUCCESSFULLY")
+                        takePhoto()
+                        photoTakenToggle = true
+                    }else if (photoTakenToggle && (distanceToWaypoint > 1.5)){
+                        photoTakenToggle = false
+                    }
 
                     val longitudeDiff =
                         currentWaypoint.coordinate.longitude - currentLocation.longitude
@@ -276,18 +291,6 @@ class MavicMiniMissionOperator(context: Context) {
                     if (abs(longitudeDiff) > originalLongitudeDiff) {
                         originalLongitudeDiff = abs(longitudeDiff)
                     }
-
-                    val droneLocation =
-                        LocationCoordinate2D(currentLocation.latitude, currentLocation.longitude)
-
-                    val pointA = LocationCoordinate2D(
-                        waypoints[1].coordinate.latitude,
-                        waypoints[1].coordinate.longitude
-                    )
-
-                    val autoStitchDistance = distance(droneLocation, pointA) * 111139
-
-                    Log.i("STATUS", "$autoStitchDistance meters left")
 
                     //terminating the sendDataTimer and creating a new one
                     sendDataTimer.cancel()
@@ -346,7 +349,6 @@ class MavicMiniMissionOperator(context: Context) {
                             travelledLatitude = false
                             directions = Direction()
                         } else { //If all waypoints have been reached, stop the mission
-                            getPhotoStitcher()
                             state = WaypointMissionState.EXECUTION_STOPPING
                             operatorListener?.onExecutionFinish(null)
                             stopMission(null)
@@ -383,6 +385,7 @@ class MavicMiniMissionOperator(context: Context) {
     fun stopMission(callback: CommonCallbacks.CompletionCallback<DJIMissionError>?) {
         showToast(activity, "trying to land")
         DJIDemoApplication.getFlightController()?.startLanding(callback)
+        getPhotoStitcher()
     }
 
     //Function used to upload the

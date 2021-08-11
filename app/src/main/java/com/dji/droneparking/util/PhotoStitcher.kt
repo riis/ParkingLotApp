@@ -109,11 +109,11 @@ class PhotoStitcher(context: Context) {
                             if (error == null) {
                                 Log.d("BANANAPIE", "Set camera mode is a success")
 
-                                mLoadingDialog.show(activity.supportFragmentManager, "testing") //show the loading screen ProgressDialog
+//                                mLoadingDialog.show(activity.supportFragmentManager, "testing") //show the loading screen ProgressDialog
                                 getFileList() //update the mediaFileList using the DJI product' SD card
                                 //If the error is not null, alert user
                             } else {
-                                Log.d("BANANAPIE", "Set camera mode is a failure")
+                                Log.d("BANANAPIE", "Set camera mode is a failure ${error.description}")
                             }
                         }
                     }

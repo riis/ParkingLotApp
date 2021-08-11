@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.SurfaceTexture
 import android.os.Bundle
+import android.util.Log
 import android.view.TextureView
 import android.view.View
 import android.view.WindowManager
@@ -31,10 +32,13 @@ import dji.common.mission.waypoint.WaypointMission
 import dji.common.model.LocationCoordinate2D
 import dji.common.product.Model
 import dji.sdk.base.BaseProduct
+import dji.common.gimbal.*
+import dji.sdk.gimbal.Gimbal
 import dji.sdk.camera.Camera
 import dji.sdk.camera.VideoFeeder
 import dji.sdk.codec.DJICodecManager
 import dji.sdk.products.Aircraft
+import dji.sdk.sdkmanager.DJISDKManager
 import dji.ux.widget.TakeOffWidget
 import java.util.*
 
@@ -55,6 +59,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var cameraBtn: Button
     private lateinit var videoSurface: TextureView
     private lateinit var videoView: CardView
+    private lateinit var gimbal: Gimbal
 
 
     private val symbolDragListener = object : OnSymbolDragListener {
@@ -77,6 +82,22 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         viewModel.operator = MavicMiniMissionOperator(this)
+
+        val rotation = Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).pitch(-90f).build()
+        gimbal = DJISDKManager.getInstance().product.gimbal
+        gimbal.rotate(
+            rotation
+        ) { djiError ->
+            if (djiError == null) {
+                Log.d("STATUS", "rotate gimbal success")
+                Toast.makeText(applicationContext, "rotate gimbal success", Toast.LENGTH_SHORT)
+                    .show()
+            } else {
+                Log.d("STATUS", "rotate gimbal error " + djiError.description)
+                Toast.makeText(applicationContext, djiError.description, Toast.LENGTH_SHORT)
+                    .show()
+            }
+        }
 
         setContentView(R.layout.activity_flight_plan_mapbox)
 
