@@ -34,9 +34,14 @@ android {
         manifestPlaceholders = [GOOGLE_MAPS_API_KEY: gMapKey, DJI_API_KEY: djiKey]
     }
 
+    buildFeatures {
+        viewBinding true
+    }
+
     buildTypes {
         release {
             minifyEnabled false
+
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
 
@@ -134,4 +139,6 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
 
     implementation 'androidx.cardview:cardview:1.0.0' //Card views
+
+    implementation 'org.tensorflow:tensorflow-lite-task-vision:0.2.0'
 }
