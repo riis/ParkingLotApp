@@ -529,7 +529,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             viewModel.flightPlan =
                 FlightPlanner.createFlightPlan(
                     newPoints,
-                    95.0f,
+                    60.0f,
                     viewModel.polygonCoordinates
                 ) // get plan
 
