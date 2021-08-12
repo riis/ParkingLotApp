@@ -96,6 +96,10 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         super.onCreate(savedInstanceState)
         operator = viewModel.getWaypointMissionOperator(this)
 
+        val rotation = Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).pitch(-90f).build()
+        try {
+            gimbal = DJISDKManager.getInstance().product.gimbal
+
             gimbal.rotate(
                 rotation
             ) { djiError ->
@@ -758,10 +762,6 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         }
     }
 
-    /**
-     * drawDetectionResult(bitmap: Bitmap, detectionResults: List<DetectionResult>
-     *      Draw a box around each objects and show the object's name.
-     */
     private fun drawDetectionResult(
         bitmap: Bitmap,
         detectionResults: List<DetectionResult>
@@ -809,4 +809,5 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
      *      A class to store the visualization info of a detected object.
      */
     data class DetectionResult(val boundingBox: RectF, val text: String)
+
 }
