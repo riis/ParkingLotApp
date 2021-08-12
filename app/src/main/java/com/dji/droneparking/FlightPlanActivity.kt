@@ -2,9 +2,7 @@ package com.dji.droneparking
 
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Color
-import android.graphics.SurfaceTexture
+import android.graphics.*
 import android.media.ImageReader
 import android.media.ImageReader.OnImageAvailableListener
 import android.os.Bundle
@@ -13,6 +11,7 @@ import android.view.TextureView
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.viewModels
@@ -48,8 +47,7 @@ import org.tensorflow.lite.task.vision.detector.ObjectDetector
 import java.util.*
 
 class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
-    MapboxMap.OnMapClickListener, View.OnClickListener, TextureView.SurfaceTextureListener,
-    OnImageAvailableListener {
+    MapboxMap.OnMapClickListener, View.OnClickListener, TextureView.SurfaceTextureListener {
 
     private val viewModel: FlightPlanActivityViewModel by viewModels()
 
@@ -66,6 +64,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var videoSurface: TextureView
     private lateinit var videoView: CardView
     private lateinit var gimbal: Gimbal
+    private lateinit var detectorView: ImageView
 
 
     private val symbolDragListener = object : OnSymbolDragListener {
@@ -88,27 +87,26 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         super.onCreate(savedInstanceState)
         viewModel.operator = MavicMiniMissionOperator(this)
 
-        val rotation = Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).pitch(-90f).build()
-        try {
-            gimbal = DJISDKManager.getInstance().product.gimbal
-
-            gimbal.rotate(
-                rotation
-            ) { djiError ->
-                if (djiError == null) {
-                    Log.d("BANANAPIE", "rotate gimbal success")
-                    Toast.makeText(applicationContext, "rotate gimbal success", Toast.LENGTH_SHORT)
-                        .show()
-                } else {
-                    Log.d("BANANAPIE", "rotate gimbal error " + djiError.description)
-                    Toast.makeText(applicationContext, djiError.description, Toast.LENGTH_SHORT)
-                        .show()
-                }
-            }
-        } catch (e: Exception) {
-            Log.d("BANANAPIE", "Drone is likely not connected")
-        }
-
+//        val rotation = Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).pitch(-90f).build()
+//        try {
+//            gimbal = DJISDKManager.getInstance().product.gimbal
+//
+//            gimbal.rotate(
+//                rotation
+//            ) { djiError ->
+//                if (djiError == null) {
+//                    Log.d("BANANAPIE", "rotate gimbal success")
+//                    Toast.makeText(applicationContext, "rotate gimbal success", Toast.LENGTH_SHORT)
+//                        .show()
+//                } else {
+//                    Log.d("BANANAPIE", "rotate gimbal error " + djiError.description)
+//                    Toast.makeText(applicationContext, djiError.description, Toast.LENGTH_SHORT)
+//                        .show()
+//                }
+//            }
+//        } catch (e: Exception) {
+//            Log.d("BANANAPIE", "Drone is likely not connected")
+//        }
 
 
         setContentView(R.layout.activity_flight_plan_mapbox)
@@ -287,27 +285,6 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         initPreviewer()
     }
 
-    //When a TextureView's SurfaceTexture is ready for use, use it to initialize the codecManager
-    override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-        if (viewModel.codecManager == null) {
-            viewModel.codecManager = DJICodecManager(this, surface, width, height)
-        }
-    }
-
-    //When a SurfaceTexture is updated
-    override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
-
-    //when a SurfaceTexture's size changes
-    override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
-
-    //when a SurfaceTexture is about to be destroyed, uninitialized the codedManager
-    override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
-        viewModel.codecManager?.cleanSurface()
-        viewModel.codecManager = null
-
-        return false
-    }
-
     //When the MainActivity is paused, clear the video feed display
     override fun onPause() {
         uninitPreviewer()
@@ -375,6 +352,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         videoView = findViewById(R.id.video_view)
 
         videoSurface = findViewById(R.id.video_previewer_surface)
+        detectorView = findViewById(R.id.detectorView)
         cameraBtn = findViewById(R.id.camera_button)
 
         switchCameraMode(SettingsDefinitions.CameraMode.SHOOT_PHOTO)
@@ -637,8 +615,28 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         viewModel.flightPlan2D.clear()
     }
 
-    override fun onImageAvailable(reader: ImageReader?) {
-        videoSurface.bitmap
+    //When a TextureView's SurfaceTexture is ready for use, use it to initialize the codecManager
+    override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+        if (viewModel.codecManager == null) {
+            viewModel.codecManager = DJICodecManager(this, surface, width, height)
+        }
+    }
+
+    //When a SurfaceTexture is updated
+    override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
+//        Log.d("BANANAPIE", "NEW FRAME AVAILABLE ${videoSurface.bitmap}")
+        videoSurface.bitmap?.let { runObjectDetection(it) }
+    }
+
+    //when a SurfaceTexture's size changes
+    override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
+
+    //when a SurfaceTexture is about to be destroyed, uninitialized the codedManager
+    override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+        viewModel.codecManager?.cleanSurface()
+        viewModel.codecManager = null
+
+        return false
     }
 
     /**
@@ -664,29 +662,36 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         val results = detector.detect(image)
 
         // Step 4: Parse the detection result and show it
-        debugPrint(results)
-//        val resultToDisplay = results.map {
-//            // Get the top-1 category and craft the display text
-//            val category = it.categories.first()
-//            val text = "${category.label}, ${category.score.times(100).toInt()}%"
-//
-//            // Create a data object to display the detection result
-//            DetectionResult(it.boundingBox, text)
-//        }
-//        // Draw the detection result on the bitmap and show it.
-//        val imgWithResult = drawDetectionResult(bitmap, resultToDisplay)
-//        runOnUiThread {
-//            inputImageView.setImageBitmap(imgWithResult)
-//        }
+//        debugPrint(results)
+        val resultToDisplay = results.map {
+            // Get the top-1 category and craft the display text
+            val category = it.categories.first()
+            val text = "${category.label}, ${category.score.times(100).toInt()}%"
+
+            // Create a data object to display the detection result
+            DetectionResult(it.boundingBox, text)
+        }
+        // Draw the detection result on the bitmap and show it.
+        val imgWithResult = drawDetectionResult(bitmap, resultToDisplay)
+        runOnUiThread {
+            detectorView.setImageBitmap(imgWithResult)
+        }
     }
 
 
     private fun debugPrint(results: List<Detection>) {
+        Log.d(
+            "BANANAPIE",
+            "--------------------------------------------------------------------------"
+        )
         for ((i, obj) in results.withIndex()) {
             val box = obj.boundingBox
 
             Log.d("BANANAPIE", "Detected object: ${i} ")
-            Log.d("BANANAPIE", "  boundingBox: (${box.left}, ${box.top}) - (${box.right},${box.bottom})")
+            Log.d(
+                "BANANAPIE",
+                "  boundingBox: (${box.left}, ${box.top}) - (${box.right},${box.bottom})"
+            )
 
             for ((j, category) in obj.categories.withIndex()) {
                 Log.d("BANANAPIE", "    Label $j: ${category.label}")
@@ -696,4 +701,55 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         }
     }
 
+    /**
+     * drawDetectionResult(bitmap: Bitmap, detectionResults: List<DetectionResult>
+     *      Draw a box around each objects and show the object's name.
+     */
+    private fun drawDetectionResult(
+        bitmap: Bitmap,
+        detectionResults: List<DetectionResult>
+    ): Bitmap {
+        val outputBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+        val canvas = Canvas(outputBitmap)
+        val pen = Paint()
+        pen.textAlign = Paint.Align.LEFT
+
+        detectionResults.forEach {
+            // draw bounding box
+            pen.color = Color.RED
+            pen.strokeWidth = 8F
+            pen.style = Paint.Style.STROKE
+            val box = it.boundingBox
+            canvas.drawRect(box, pen)
+
+
+            val tagSize = Rect(0, 0, 0, 0)
+
+            // calculate the right font size
+            pen.style = Paint.Style.FILL_AND_STROKE
+            pen.color = Color.YELLOW
+            pen.strokeWidth = 2F
+
+            pen.textSize = 96F
+            pen.getTextBounds(it.text, 0, it.text.length, tagSize)
+            val fontSize: Float = pen.textSize * box.width() / tagSize.width()
+
+            // adjust the font size so texts are inside the bounding box
+            if (fontSize < pen.textSize) pen.textSize = fontSize
+
+            var margin = (box.width() - tagSize.width()) / 2.0F
+            if (margin < 0F) margin = 0F
+            canvas.drawText(
+                it.text, box.left + margin,
+                box.top + tagSize.height().times(1F), pen
+            )
+        }
+        return outputBitmap
+    }
+
+    /**
+     * DetectionResult
+     *      A class to store the visualization info of a detected object.
+     */
+    data class DetectionResult(val boundingBox: RectF, val text: String)
 }
