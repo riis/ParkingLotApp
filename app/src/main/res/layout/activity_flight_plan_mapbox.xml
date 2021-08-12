@@ -32,6 +32,20 @@
             custom:layout_constraintEnd_toEndOf="parent"
             custom:layout_constraintStart_toStartOf="parent"
             custom:layout_constraintTop_toTopOf="parent" />
+
+        <ImageView
+            android:id="@+id/detectorView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"
+            android:layout_marginEnd="40dp"
+            android:layout_marginStart="40dp"
+            android:layout_marginTop="25dp"
+            android:layout_marginBottom="25dp"
+            custom:layout_constraintBottom_toBottomOf="parent"
+            custom:layout_constraintEnd_toEndOf="parent"
+            custom:layout_constraintStart_toStartOf="parent"
+            custom:layout_constraintTop_toTopOf="parent"/>
     </androidx.cardview.widget.CardView>
 
     <LinearLayout
@@ -149,13 +163,6 @@
             android:textAlignment="center"
             android:textColor="@color/white"
             android:textSize="36sp" />
-
-        <ImageView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginTop="15dp"
-            android:src="@drawable/ic_trip_pins" />
 
         <TextView
             android:layout_width="match_parent"

@@ -1,5 +1,6 @@
 package com.dji.droneparking
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import com.dji.droneparking.util.MavicMiniMissionOperator
 import com.dji.droneparking.util.WaypointMissionManager
@@ -12,13 +13,14 @@ import dji.common.model.LocationCoordinate2D
 import dji.sdk.camera.VideoFeeder
 import dji.sdk.codec.DJICodecManager
 import dji.sdk.products.Aircraft
-import java.util.ArrayList
+import java.util.*
 
-class FlightPlanActivityViewModel: ViewModel() {
+class FlightPlanActivityViewModel : ViewModel() {
     var aircraft: Aircraft? = null
 
     //listener that receives video data coming from the connected DJI product
     var receivedVideoDataListener: VideoFeeder.VideoDataListener? = null
+
     //handles the encoding and decoding of video data
     var codecManager: DJICodecManager? = null
     var isCameraShowing = false
@@ -48,4 +50,13 @@ class FlightPlanActivityViewModel: ViewModel() {
     var operator: MavicMiniMissionOperator? = null
     lateinit var droneLocation: LocationCoordinate3D
     var located = false
+
+    private var operatorInstance: MavicMiniMissionOperator? = null
+
+    fun getWaypointMissionOperator(context: Context): MavicMiniMissionOperator {
+        if (operatorInstance == null) {
+            operatorInstance = MavicMiniMissionOperator(context)
+        }
+        return operatorInstance!!
+    }
 }
