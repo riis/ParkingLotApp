@@ -1,14 +1,13 @@
-package com.dji.droneparking.mission
+package com.dji.droneparking.util
 
 import android.content.Context
+import android.os.Bundle
 import android.os.Environment
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.dji.droneparking.util.DJIDemoApplication
-import com.dji.droneparking.util.DownloadDialog
+import com.dji.droneparking.R
+import com.dji.droneparking.mission.LoadingDialog
 import dji.common.camera.SettingsDefinitions
 import dji.common.error.DJIError
 import dji.sdk.media.DownloadListener
@@ -18,10 +17,9 @@ import dji.sdk.media.MediaManager
 import java.io.File
 import java.util.*
 
-class PhotoStitcher(context: Context){
+class PhotoStitcher(): AppCompatActivity(){
 
     //class variables
-    private val activity: AppCompatActivity
     private var mediaFileList: MutableList<MediaFile> = mutableListOf() //empty list of MediaFile objects
     private var mMediaManager: MediaManager? = null //uninitialized media manager
     private var currentFileListState = MediaManager.FileListState.UNKNOWN //variable for the current state of the MediaManager's file list
@@ -31,30 +29,38 @@ class PhotoStitcher(context: Context){
     private lateinit var mLoadingDialog: LoadingDialog
     private lateinit var mDownloadDialog: DownloadDialog
     private lateinit var dateString: String
-    private val mContext = context
-    private var currentDownloadIndex = 0
+    private var currentDownloadIndex = -1
 
-    init {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        setContentView(R.layout.activity_photo_stitcher)
+
         initUI()
         initMediaManager()
         createFileDir()
-        activity = context as AppCompatActivity
+
     }
+
+
 
     private fun createFileDir(){
         val calendar = Calendar.getInstance()
         val year = calendar.get(Calendar.YEAR).toString()
         val day = calendar.get(Calendar.DAY_OF_MONTH).toString()
         val month = calendar.get(Calendar.MONTH)+1
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        val minute = calendar.get(Calendar.MINUTE)
+        val second = calendar.get(Calendar.SECOND)
 
 
         dateString = if (month<10){
-            "$year-0$month-$day"
+            "$year-0$month-$day $hour:$minute:$second"
         } else{
-            "$year-$month-$day"
+            "$year-$month-$day $hour:$minute:$second"
         }
 
-        photoStorageDir = File(mContext.getExternalFilesDir(Environment.DIRECTORY_PICTURES)?.path.toString())
+        photoStorageDir = File(this.getExternalFilesDir(Environment.DIRECTORY_PICTURES)?.path.toString(), dateString)
         if(!photoStorageDir.exists()) photoStorageDir.mkdirs()
         Log.d("BANANAPIE", photoStorageDir.toString())
 
@@ -68,7 +74,7 @@ class PhotoStitcher(context: Context){
 
     //Function that displays toast messages to the user
     private fun showToast(msg: String?) {
-        activity.runOnUiThread { Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show() }
+        this.runOnUiThread { Toast.makeText(this, msg, Toast.LENGTH_SHORT).show() }
     }
 
 
@@ -112,7 +118,7 @@ class PhotoStitcher(context: Context){
                             if (error == null) {
                                 Log.d("BANANAPIE", "Set camera mode is a success")
 
-                                mLoadingDialog.show(activity.supportFragmentManager, "testing") //show the loading screen ProgressDialog
+                                mLoadingDialog.show(this.supportFragmentManager, "testing") //show the loading screen ProgressDialog
                                 getFileList() //update the mediaFileList using the DJI product' SD card
                                 //If the error is not null, alert user
 
@@ -148,8 +154,8 @@ class PhotoStitcher(context: Context){
 
                         //If the error is null, dismiss the loading screen ProgressDialog
                         if (djiError == null) {
-                            Log.d("BANANAPIE", "we are in the get file list")
-//                            mLoadingDialog.dismiss()
+                            Log.d("BANANAPIE", "obtained media data from SD card (PhotoStitcher)")
+                            mLoadingDialog.dismiss()
 
                             //Reset data if the file list state is not incomplete
                             if (currentFileListState != MediaManager.FileListState.INCOMPLETE) {
@@ -167,14 +173,14 @@ class PhotoStitcher(context: Context){
 
 
 
-                            activity.runOnUiThread {
+                            this.runOnUiThread {
                                 downloadFileByIndex(currentDownloadIndex)
                             }
 
 
                             //If there was an error with refreshing the MediaManager's file list, dismiss the loading progressDialog and alert the user.
                         } else {
-                            Log.d("BANANAPIE","Get Media File List Failed:" + djiError.description)
+                            Log.d("BANANAPIE","could not obtain media data from SD card (PhotoSticher)" + djiError.description)
                         }
                     }
                 }
@@ -221,7 +227,7 @@ class PhotoStitcher(context: Context){
             mDownloadDialog = DownloadDialog("Downloading ${currentDownloadIndex + 1}/${mediaFileList.size} images ...")
 
 
-            mDownloadDialog.show(activity.supportFragmentManager, "asdf")
+            mDownloadDialog.show(supportFragmentManager, "asdf")
 
 
 

@@ -84,6 +84,17 @@
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".util.PhotoStitcher"
+            android:configChanges="keyboard|keyboardHidden|orientation"
+            android:label="photo_stitcher_activity"
+            android:screenOrientation="userLandscape"
+            android:theme="@style/Theme.AppCompat.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

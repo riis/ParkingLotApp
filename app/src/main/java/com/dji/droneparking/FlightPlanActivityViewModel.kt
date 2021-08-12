@@ -7,6 +7,7 @@ import com.mapbox.mapboxsdk.geometry.LatLng
 import com.mapbox.mapboxsdk.maps.MapboxMap
 import com.mapbox.mapboxsdk.maps.SupportMapFragment
 import com.mapbox.mapboxsdk.plugins.annotation.*
+import dji.common.flightcontroller.LocationCoordinate3D
 import dji.common.model.LocationCoordinate2D
 import dji.sdk.camera.VideoFeeder
 import dji.sdk.codec.DJICodecManager
@@ -45,6 +46,6 @@ class FlightPlanActivityViewModel: ViewModel() {
 
     var manager: WaypointMissionManager? = null
     var operator: MavicMiniMissionOperator? = null
-    lateinit var droneLocation: LocationCoordinate2D
+    lateinit var droneLocation: LocationCoordinate3D
     var located = false
 }

@@ -30,15 +30,21 @@ import com.mapbox.mapboxsdk.plugins.annotation.*
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory
 import com.riis.cattlecounter.util.distanceToSegment
 import dji.common.camera.SettingsDefinitions
+import dji.common.error.DJICameraError
+import dji.common.error.DJIError
 import dji.common.mission.waypoint.WaypointMission
 import dji.common.model.LocationCoordinate2D
 import dji.common.product.Model
 import dji.sdk.base.BaseProduct
 import dji.common.gimbal.*
+import dji.common.util.CommonCallbacks
+import dji.log.DJILog
 import dji.sdk.gimbal.Gimbal
 import dji.sdk.camera.Camera
 import dji.sdk.camera.VideoFeeder
 import dji.sdk.codec.DJICodecManager
+import dji.sdk.media.MediaFile
+import dji.sdk.media.MediaManager
 import dji.sdk.products.Aircraft
 import dji.sdk.sdkmanager.DJISDKManager
 import dji.ux.widget.TakeOffWidget
@@ -67,6 +73,8 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var videoView: CardView
     private lateinit var gimbal: Gimbal
 
+    private var mMediaManager: MediaManager? = null //uninitialized media manager
+    private var mediaFileList: MutableList<MediaFile> = mutableListOf() //empty list of MediaFile objects
 
     private val symbolDragListener = object : OnSymbolDragListener {
         override fun onAnnotationDrag(symbol: Symbol) {}
@@ -124,14 +132,13 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         viewModel.mapFragment.onCreate(savedInstanceState)
         viewModel.mapFragment.getMapAsync(this)
 
-        //TODO implement the DJI Image Downloader Class
-
         val dialog = AlertDialog.Builder(this)
             .setMessage(R.string.ensure_clear_sd)
             .setTitle(R.string.title_clear_sd)
             .setNegativeButton(R.string.no, null)
-            .setPositiveButton(R.string.yes) { _, _ -> /*downloader.cleanDrone()*/ }
-            // TODO: yes will crash app since downloader not initialized yet
+            .setPositiveButton(R.string.yes) { _, _ ->
+                clearSDCard()
+            }
             .create()
 
         dialog.show()
@@ -339,6 +346,60 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         }
 
     }
+
+     private fun clearSDCard() {
+         Log.d("BANANAPIE", "attempting to clear SD card")
+         DJIDemoApplication.getCameraInstance()?.let { camera -> //Get an instance of the connected DJI product's camera
+             mMediaManager = camera.mediaManager //Get the camera's MediaManager
+
+             mMediaManager?.let { mediaManager ->
+                 //refreshing the MediaManager's file list using the connected DJI product's SD card
+                 mediaManager.refreshFileListOfStorageLocation(
+                     SettingsDefinitions.StorageLocation.SDCARD //file storage location
+                 ) { djiError -> //checking the callback error
+
+                     //If the error is null, dismiss the loading screen ProgressDialog
+                     if (djiError == null) {
+                         Log.d("BANANAPIE", "obtained media data from SD card (FlightPlanActivity)")
+                     }
+                     else{
+                         Log.d("BANANAPIE", "could not obtain media data from SD card (FlightPlanActivity)")
+                     }
+                     //updating the recycler view's mediaFileList using the now refreshed MediaManager's file list
+                     mediaManager.sdCardFileListSnapshot?.let { listOfMedia ->
+                         mediaFileList = listOfMedia
+                     }
+
+                     if (mediaFileList.isEmpty()){
+                         Log.d("BANANAPIE", "SD card is empty, there's nothing to clear")
+                     }
+                     else{
+                         mediaManager.deleteFiles(
+                             mediaFileList,
+                             object :
+                                 CommonCallbacks.CompletionCallbackWithTwoParam<List<MediaFile?>?, DJICameraError?> {
+                                 //if the deletion from the SD card is successful...
+                                 override fun onSuccess(
+                                     x: List<MediaFile?>?,
+                                     y: DJICameraError?
+                                 ) {
+                                     Log.d("BANANAPIE", "cleared SD card successfully")
+
+                                     //remove the deleted file from the mediaFileList
+                                     mediaFileList.clear()
+                                 }
+
+                                 //if the deletion from the SD card failed, alert the user
+                                 override fun onFailure(error: DJIError) {
+                                     Log.d("BANANAPIE", "failed to clear SD card")
+                                 }
+                             })
+                     }
+
+                 }
+             }
+         }
+     }
 
     //Function that initializes the display for the videoSurface TextureView
     private fun initPreviewer() {
@@ -637,66 +698,6 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         viewModel.flightPlan2D.clear()
     }
 
-    /*
-    override fun onImageAvailable(reader: ImageReader?) {
-        videoSurface.bitmap
-    }
-
-    /**
-     * runObjectDetection(bitmap: Bitmap)
-     *      TFLite Object Detection function
-     */
-    private fun runObjectDetection(bitmap: Bitmap) {
-        // Step 1: create TFLite's TensorImage object
-        val image = TensorImage.fromBitmap(bitmap)
-
-        // Step 2: Initialize the detector object
-        val options = ObjectDetector.ObjectDetectorOptions.builder()
-            .setMaxResults(5)
-            .setScoreThreshold(0.5f)
-            .build()
-        val detector = ObjectDetector.createFromFileAndOptions(
-            this, // the application context
-            "model.tflite", // must be same as the filename in assets folder
-            options
-        )
-
-        // Step 3: feed given image to the model and print the detection result
-        val results = detector.detect(image)
-
-        // Step 4: Parse the detection result and show it
-        debugPrint(results)
-//        val resultToDisplay = results.map {
-//            // Get the top-1 category and craft the display text
-//            val category = it.categories.first()
-//            val text = "${category.label}, ${category.score.times(100).toInt()}%"
-//
-//            // Create a data object to display the detection result
-//            DetectionResult(it.boundingBox, text)
-//        }
-//        // Draw the detection result on the bitmap and show it.
-//        val imgWithResult = drawDetectionResult(bitmap, resultToDisplay)
-//        runOnUiThread {
-//            inputImageView.setImageBitmap(imgWithResult)
-//        }
-    }
-
-
-    private fun debugPrint(results: List<Detection>) {
-        for ((i, obj) in results.withIndex()) {
-            val box = obj.boundingBox
-
-            Log.d("BANANAPIE", "Detected object: ${i} ")
-            Log.d("BANANAPIE", "  boundingBox: (${box.left}, ${box.top}) - (${box.right},${box.bottom})")
-
-            for ((j, category) in obj.categories.withIndex()) {
-                Log.d("BANANAPIE", "    Label $j: ${category.label}")
-                val confidence: Int = category.score.times(100).toInt()
-                Log.d("BANANAPIE", "    Confidence: ${confidence}%")
-            }
-        }
-    }
-    */
 
 
 }
