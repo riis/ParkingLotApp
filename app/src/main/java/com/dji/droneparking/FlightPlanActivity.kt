@@ -65,7 +65,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var videoView: CardView
     private lateinit var gimbal: Gimbal
     private lateinit var detectorView: ImageView
-
+    private lateinit var operator: MavicMiniMissionOperator
 
     private val symbolDragListener = object : OnSymbolDragListener {
         override fun onAnnotationDrag(symbol: Symbol) {}
@@ -85,7 +85,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        viewModel.operator = MavicMiniMissionOperator(this)
+        operator = viewModel.getWaypointMissionOperator(this)
 
 //        val rotation = Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).pitch(-90f).build()
 //        try {
@@ -134,7 +134,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         dialog.show()
 
-        viewModel.operator!!.droneLocationLiveData.observe(this, { location ->
+        operator?.droneLocationLiveData?.observe(this, { location ->
 
             if (viewModel.styleReady) {
 
@@ -238,14 +238,12 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                         val djiMission: WaypointMission =
                             FlightPlanner.createFlightMissionFromCoordinates(viewModel.flightPlan2D)
 
-                        viewModel.manager = viewModel.operator?.let {
-                            WaypointMissionManager(
-                                djiMission,
-                                it,
-                                findViewById(R.id.label_flight_plan),
-                                this@FlightPlanActivity
-                            )
-                        }
+                        viewModel.manager = WaypointMissionManager(
+                            djiMission,
+                            operator,
+                            findViewById(R.id.label_flight_plan),
+                            this@FlightPlanActivity
+                        )
 
                         viewModel.manager?.startMission()
                         layoutConfirmPlan.visibility = View.GONE
