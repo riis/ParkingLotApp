@@ -35,4 +35,5 @@
     <string name="get_started">Get Started</string>
     <string name="camera">camera</string>
     <string name="locate">locate</string>
+    <string name="photo_stitch">Photo Stitch</string>
 </resources>
