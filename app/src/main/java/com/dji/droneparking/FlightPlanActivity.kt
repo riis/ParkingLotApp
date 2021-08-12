@@ -50,6 +50,7 @@ import dji.ux.widget.TakeOffWidget
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.task.vision.detector.Detection
 import org.tensorflow.lite.task.vision.detector.ObjectDetector
+
 import java.util.*
 
 class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
