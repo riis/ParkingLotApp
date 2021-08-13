@@ -6,6 +6,8 @@ import android.graphics.*
 import android.media.ImageReader
 import android.media.ImageReader.OnImageAvailableListener
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.TextureView
 import android.view.View
@@ -46,6 +48,7 @@ import dji.sdk.media.MediaFile
 import dji.sdk.media.MediaManager
 import dji.sdk.products.Aircraft
 import dji.sdk.sdkmanager.DJISDKManager
+import dji.thirdparty.afinal.core.AsyncTask
 import dji.ux.widget.TakeOffWidget
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.task.vision.detector.Detection
@@ -108,6 +111,12 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                     Log.d("BANANAPIE", "rotate gimbal success")
                     Toast.makeText(applicationContext, "rotate gimbal success", Toast.LENGTH_SHORT)
                         .show()
+
+                    val handler = Handler(Looper.getMainLooper())
+                    handler.postDelayed({
+                        showClearMemoryDialog()
+                    }, 3000)
+
                 } else {
                     Log.d("BANANAPIE", "rotate gimbal error " + djiError.description)
                     Toast.makeText(applicationContext, djiError.description, Toast.LENGTH_SHORT)
@@ -117,8 +126,6 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         } catch (e: Exception) {
             Log.d("BANANAPIE", "Drone is likely not connected")
         }
-
-
 
         setContentView(R.layout.activity_flight_plan_mapbox)
 
@@ -133,16 +140,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         viewModel.mapFragment.onCreate(savedInstanceState)
         viewModel.mapFragment.getMapAsync(this)
 
-        val dialog = AlertDialog.Builder(this)
-            .setMessage(R.string.ensure_clear_sd)
-            .setTitle(R.string.title_clear_sd)
-            .setNegativeButton(R.string.no, null)
-            .setPositiveButton(R.string.yes) { _, _ ->
-                clearSDCard()
-            }
-            .create()
 
-        dialog.show()
 
         operator?.droneLocationLiveData?.observe(this, { location ->
 
@@ -325,7 +323,21 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
     }
 
+    private fun showClearMemoryDialog(){
+        val dialog = AlertDialog.Builder(this)
+            .setMessage(R.string.ensure_clear_sd)
+            .setTitle(R.string.title_clear_sd)
+            .setNegativeButton(R.string.no, null)
+            .setPositiveButton(R.string.yes) { _, _ ->
+                clearSDCard()
+            }
+            .create()
+
+        dialog.show()
+    }
+
      private fun clearSDCard() {
+
          Log.d("BANANAPIE", "attempting to clear SD card")
          DJIDemoApplication.getCameraInstance()?.let { camera -> //Get an instance of the connected DJI product's camera
              mMediaManager = camera.mediaManager //Get the camera's MediaManager
