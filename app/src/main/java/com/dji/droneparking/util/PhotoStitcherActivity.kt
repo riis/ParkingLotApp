@@ -1,16 +1,11 @@
 package com.dji.droneparking.util
 
-import android.content.Context
-import android.os.Bundle
-import android.os.Environment
+import android.os.*
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.AbsListView
-import android.widget.ImageView
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -18,12 +13,14 @@ import com.dji.droneparking.R
 import com.dji.droneparking.mission.LoadingDialog
 import dji.common.camera.SettingsDefinitions
 import dji.common.error.DJIError
-import dji.log.DJILog
 import dji.sdk.media.*
 import java.io.File
 import java.util.*
+import com.dji.droneparking.net.StitchRequester
+import kotlin.collections.HashMap
 
-class PhotoStitcher(): AppCompatActivity(){
+
+class PhotoStitcherActivity(): AppCompatActivity(){
 
     //class variables
     private var mediaFileList: MutableList<MediaFile> = mutableListOf() //empty list of MediaFile objects
@@ -40,6 +37,13 @@ class PhotoStitcher(): AppCompatActivity(){
     //recycler view var
     private lateinit var photosRecyclerView: RecyclerView
     private lateinit var mListAdapter: FileListAdapter //recycler view adapter
+
+    //photoStitching var
+    private var stitchRequester: StitchRequester? = null
+    private lateinit var stitchedImageView: ImageView
+    private lateinit var stitchImagesButton: Button
+    private lateinit var photoStitchProgressTextView: TextView
+    private var imageUploadCount = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,6 +83,10 @@ class PhotoStitcher(): AppCompatActivity(){
 
     private fun initUI(){
         mLoadingDialog = LoadingDialog()
+
+        stitchedImageView = findViewById(R.id.stitched_image_view)
+        stitchImagesButton = findViewById(R.id.stitch_images_button)
+        photoStitchProgressTextView = findViewById(R.id.photo_stitch_progress_text_view)
 
         photosRecyclerView = findViewById(R.id.photos_recycler_view)
         photosRecyclerView.layoutManager =
@@ -174,7 +182,7 @@ class PhotoStitcher(): AppCompatActivity(){
 
                         //If the error is null, dismiss the loading screen ProgressDialog
                         if (djiError == null) {
-                            Log.d("BANANAPIE", "obtained media data from SD card (PhotoStitcher)")
+                            Log.d("BANANAPIE", "obtained media data from SD card (PhotoStitcherActivity)")
                             mLoadingDialog.dismiss()
 
                             //Reset data if the file list state is not incomplete
@@ -381,12 +389,66 @@ class PhotoStitcher(): AppCompatActivity(){
                 schedulerSafe.resume { error ->
                     //if the callback error is null, the operation was successful.
                     if (error == null) {
-                        getThumbnails() //
+                        getThumbnails()
                     }
                 }
             }
             return
         }
+
+    }
+
+    private fun photoStitch(){
+
+        stitchRequester = StitchRequester()
+        val stitchMessageHandler: Handler = getStitchHandler(stitchRequester)
+
+        stitchRequester!!.setHandler(stitchMessageHandler)
+
+
+    }
+
+    private fun getStitchHandler(requester: StitchRequester): Handler {
+
+        val displayables: HashMap<Int, String> = HashMap()
+        displayables[StitchRequester.StitchMessage.STITCH_START_SUCCESS.value] = "Stitch started successfully."
+        displayables[StitchRequester.StitchMessage.STITCH_START_FAILURE.value] = "Couldn't start stitch."
+        displayables[StitchRequester.StitchMessage.STITCH_IMAGE_ADD_SUCCESS.value] = "adding image "
+        displayables[StitchRequester.StitchMessage.STITCH_IMAGE_ADD_FAILURE.value] = "Image couldn't be added."
+        displayables[StitchRequester.StitchMessage.STITCH_LOCK_SUCCESS.value] = "Stitch locked."
+        displayables[StitchRequester.StitchMessage.STITCH_LOCK_FAILURE.value] = "Stitch couldn't be locked."
+        displayables[StitchRequester.StitchMessage.STITCH_POLL_COMPLETE.value] = "Stitch completed. Downloading..."
+        displayables[StitchRequester.StitchMessage.STITCH_POLL_NOT_COMPLETE.value] = "Waiting for stitch..."
+        displayables[StitchRequester.StitchMessage.STITCH_RESULT_SUCCESS.value] = "Stitch downloaded."
+        displayables[StitchRequester.StitchMessage.STITCH_RESULT_FAILURE.value] = "Could not download stitch!"
+
+        return object : Handler(Looper.getMainLooper()) {
+
+            override fun handleMessage(msg: Message) {
+                val what: Int = msg.what
+                photoStitchProgressTextView.visibility = View.VISIBLE
+                photoStitchProgressTextView.text = displayables[what]
+                Log.d("STITCH", "handleMessage: " + photoStitchProgressTextView.text)
+
+                if (what == StitchRequester.StitchMessage.STITCH_START_SUCCESS.value){
+                    Log.d("STITCH", "Requesting upload start")
+                    requester.addImages(downloader.getImageList())
+                }
+                else if (what == StitchRequester.StitchMessage.STITCH_IMAGE_ADD_FAILURE.value){
+
+                }
+            }
+        }
+
+
+/*
+        return Handler(Looper.getMainLooper()) {
+            override fun handleMessage(msg: Message) {
+                val what: Int = msg.what
+                photoStitchProgressTextView.visibility = View.VISIBLE
+                photoStitchProgressTextView.setText(displayables.get(what))
+            }
+        } */
 
     }
 

@@ -8,7 +8,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
-import com.dji.droneparking.FlightPlanActivity
 import com.dji.droneparking.util.DJIDemoApplication.getCameraInstance
 import com.dji.droneparking.util.Tools.showToast
 import dji.common.camera.SettingsDefinitions
@@ -68,7 +67,7 @@ class MavicMiniMissionOperator(context: Context) {
 
     private var distanceToWaypoint = 0.0
     private var photoTakenToggle = false
-    private var photoStitcherInstance: PhotoStitcher? = null
+    private var photoStitcherActivityInstance: PhotoStitcherActivity? = null
 
     init {
         initFlightController()
@@ -152,7 +151,7 @@ class MavicMiniMissionOperator(context: Context) {
     //Gets an instance of the MavicMiniMissionOperator class and gives this activity's context as input
     private fun getPhotoStitcher() {
 
-        val intent = Intent(mContext, PhotoStitcher::class.java)
+        val intent = Intent(mContext, PhotoStitcherActivity::class.java)
         mContext.startActivity(intent)
     }
 
