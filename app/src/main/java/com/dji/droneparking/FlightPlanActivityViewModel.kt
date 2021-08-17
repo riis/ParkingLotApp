@@ -1,6 +1,8 @@
 package com.dji.droneparking
 
 import android.content.Context
+import android.graphics.Bitmap
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.dji.droneparking.util.MavicMiniMissionOperator
 import com.dji.droneparking.util.WaypointMissionManager
@@ -13,9 +15,19 @@ import dji.common.model.LocationCoordinate2D
 import dji.sdk.camera.VideoFeeder
 import dji.sdk.codec.DJICodecManager
 import dji.sdk.products.Aircraft
+import org.tensorflow.lite.task.vision.detector.ObjectDetector
 import java.util.*
 
 class FlightPlanActivityViewModel : ViewModel() {
+    var frameCounter = 0
+    var detector: ObjectDetector? = null
+    var options: ObjectDetector.ObjectDetectorOptions? = null
+    var bitmap: Bitmap? = null
+
+
+
+
+
     var aircraft: Aircraft? = null
 
     //listener that receives video data coming from the connected DJI product
