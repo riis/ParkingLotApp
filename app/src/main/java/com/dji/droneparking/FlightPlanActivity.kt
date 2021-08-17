@@ -6,6 +6,8 @@ import android.graphics.*
 import android.media.ImageReader
 import android.media.ImageReader.OnImageAvailableListener
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.TextureView
 import android.view.View
@@ -48,6 +50,7 @@ import dji.sdk.media.MediaFile
 import dji.sdk.media.MediaManager
 import dji.sdk.products.Aircraft
 import dji.sdk.sdkmanager.DJISDKManager
+import dji.thirdparty.afinal.core.AsyncTask
 import dji.ux.widget.TakeOffWidget
 import kotlinx.coroutines.*
 import org.tensorflow.lite.support.image.TensorImage
@@ -103,9 +106,6 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         super.onCreate(savedInstanceState)
         operator = viewModel.getWaypointMissionOperator(this)
 
-        // Step 2: Initialize the detector object
-
-
         viewModel.options = ObjectDetector.ObjectDetectorOptions
             .builder()
             .setNumThreads(2)
@@ -118,7 +118,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             "model.tflite", // must be same as the filename in assets folder
             viewModel.options
         )
-        
+
 
 
 
@@ -157,16 +157,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         viewModel.mapFragment.onCreate(savedInstanceState)
         viewModel.mapFragment.getMapAsync(this)
 
-        val dialog = AlertDialog.Builder(this)
-            .setMessage(R.string.ensure_clear_sd)
-            .setTitle(R.string.title_clear_sd)
-            .setNegativeButton(R.string.no, null)
-            .setPositiveButton(R.string.yes) { _, _ ->
-                clearSDCard()
-            }
-            .create()
 
-        dialog.show()
 
         operator.droneLocationLiveData.observe(this, { location ->
 
@@ -349,6 +340,19 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             }
         }
 
+    }
+
+    private fun showClearMemoryDialog(){
+        val dialog = AlertDialog.Builder(this)
+            .setMessage(R.string.ensure_clear_sd)
+            .setTitle(R.string.title_clear_sd)
+            .setNegativeButton(R.string.no, null)
+            .setPositiveButton(R.string.yes) { _, _ ->
+                clearSDCard()
+            }
+            .create()
+
+        dialog.show()
     }
 
     private fun clearSDCard() {

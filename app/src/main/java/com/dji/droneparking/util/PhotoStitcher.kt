@@ -4,16 +4,22 @@ import android.content.Context
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.AbsListView
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.dji.droneparking.R
 import com.dji.droneparking.mission.LoadingDialog
 import dji.common.camera.SettingsDefinitions
 import dji.common.error.DJIError
-import dji.sdk.media.DownloadListener
-import dji.sdk.media.FetchMediaTaskScheduler
-import dji.sdk.media.MediaFile
-import dji.sdk.media.MediaManager
+import dji.log.DJILog
+import dji.sdk.media.*
 import java.io.File
 import java.util.*
 
@@ -30,6 +36,10 @@ class PhotoStitcher(): AppCompatActivity(){
     private lateinit var mDownloadDialog: DownloadDialog
     private lateinit var dateString: String
     private var currentDownloadIndex = -1
+
+    //recycler view var
+    private lateinit var photosRecyclerView: RecyclerView
+    private lateinit var mListAdapter: FileListAdapter //recycler view adapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,6 +80,14 @@ class PhotoStitcher(): AppCompatActivity(){
     private fun initUI(){
         mLoadingDialog = LoadingDialog()
 
+        photosRecyclerView = findViewById(R.id.photos_recycler_view)
+        photosRecyclerView.layoutManager =
+            GridLayoutManager(this, 2) //second parameter specifies number of columns in grid
+
+        mListAdapter = FileListAdapter()
+        photosRecyclerView.adapter = mListAdapter
+
+
     }
 
     //Function that displays toast messages to the user
@@ -84,6 +102,7 @@ class PhotoStitcher(): AppCompatActivity(){
         if (DJIDemoApplication.getProductInstance() == null) {
             //clear the mediaFileList
             mediaFileList.clear()
+            mListAdapter.notifyDataSetChanged()
 
             Log.d("BANANAPIE", "Product disconnected")
             return
@@ -126,6 +145,7 @@ class PhotoStitcher(): AppCompatActivity(){
                                 Log.d("BANANAPIE", "Set camera mode is a failure ${error.description}")
                             }
                         }
+                        scheduler = mediaManager.scheduler
                     }
 
                 } else {
@@ -171,8 +191,6 @@ class PhotoStitcher(): AppCompatActivity(){
                             //Older files are now at the top of the mediaFileList, and newer ones are at the bottom.
                             mediaFileList.sortByDescending { it.timeCreated }
 
-
-
                             this.runOnUiThread {
                                 downloadFileByIndex(currentDownloadIndex)
                             }
@@ -185,6 +203,91 @@ class PhotoStitcher(): AppCompatActivity(){
                     }
                 }
             }
+
+        }
+    }
+
+    /**
+     * NOTE:Because full resolution photos/videos take too long to load, we want the recycler view to only display
+     *   ... thumbnails of each media file in the mediaFileList.
+     */
+
+    //Function used to get the thumbnail images of all the media files in the mediaFileList
+    private fun getThumbnails() {
+        //if the mediaFileList is empty, alert the user
+        if (mediaFileList.size <= 0) {
+            Log.d("BANANAPIE","No File info for downloading thumbnails")
+            return
+        }
+        //if the mediaFileList is not empty, call getThumbnailByIndex() on each media file
+        for (i in mediaFileList.indices) {
+            getThumbnailByIndex(i)
+        }
+    }
+
+    //creating a Callback which is called whenever media content is downloaded using FetchMediaTask()
+    private val taskCallback =
+        FetchMediaTask.Callback { _, option, error ->
+            //if the callback error is null, the download operation was successful
+            if (null == error) {
+                //if a preview image or thumbnail was downloaded, notify the recycler view that its data set has changed.
+                if (option == FetchMediaTaskContent.PREVIEW) {
+                    runOnUiThread {mListAdapter.notifyDataSetChanged()}
+                }
+                if (option == FetchMediaTaskContent.THUMBNAIL) {
+                    runOnUiThread {mListAdapter.notifyDataSetChanged()}
+                }
+            } else {
+                Log.d("BANANAPIE", "Fetch Media Task Failed" + error.description)
+            }
+        }
+
+    private fun getThumbnailByIndex(index: Int) {
+        //creating a task to fetch the thumbnail of a media file in the mediaFileList.
+        //This function also calls taskCallback to check for and respond to errors.
+        val task =
+            FetchMediaTask(mediaFileList[index], FetchMediaTaskContent.THUMBNAIL, taskCallback)
+
+        //Using the scheduler to move each task to the back of its download queue.
+        //The task will be executed after all other tasks are completed.
+        scheduler?.let {
+            it.moveTaskToEnd(task)
+        }
+    }
+
+    //Creating a ViewHolder to store the item views displayed in the RecyclerView
+    private class ItemHolder(itemView: View) :
+        RecyclerView.ViewHolder(itemView) {
+
+        //referencing child views from the item view's layout using their resource ids
+        var thumbnailImage: ImageView = itemView.findViewById(R.id.thumbnail) as ImageView
+    }
+
+    //Creating an adapter for the RecyclerView
+    private inner class FileListAdapter : RecyclerView.Adapter<ItemHolder>() {
+
+        //returns the number of items in the adapter's data set list
+        override fun getItemCount(): Int {
+            return mediaFileList.size
+        }
+        //inflates an item view and creates a ViewHolder to wrap it
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ItemHolder {
+            val view = LayoutInflater.from(parent.context)
+                //item view layout defined in media_info_item.xml
+                .inflate(R.layout.list_item_photo_stitcher, parent, false)
+            return ItemHolder(view)
+        }
+
+        //Binds a ViewHolder in the recyclerView to a MediaFile object in the mediaFileList.
+        //The UI of the ViewHolder is changed to display the MediaFile's data.
+        override fun onBindViewHolder(mItemHolder: ItemHolder, index: Int) {
+            val mediaFile: MediaFile = mediaFileList[index]
+
+            mItemHolder.thumbnailImage.setImageBitmap(mediaFile.thumbnail)
+
+            //mItemHolder.thumbnailImage.setOnClickListener(ImgOnClickListener) //making the thumbnail_img ImageView clickable
+            mItemHolder.thumbnailImage.tag = mediaFile //setting the MediaFile object as the thumbnail_img ImageView's tag
+            mItemHolder.itemView.tag = index //setting the current mediaFileList index as the itemView's tag
 
         }
     }
@@ -273,6 +376,15 @@ class PhotoStitcher(): AppCompatActivity(){
         }
 
         else{
+            //Resume the scheduler. This will allow it to start executing any tasks in its download queue.
+            scheduler?.let { schedulerSafe ->
+                schedulerSafe.resume { error ->
+                    //if the callback error is null, the operation was successful.
+                    if (error == null) {
+                        getThumbnails() //
+                    }
+                }
+            }
             return
         }
 
