@@ -75,6 +75,8 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var videoView: CardView
     private lateinit var gimbal: Gimbal
 
+    private lateinit var mLoadingDialog: LoadingDialog
+
     private var mMediaManager: MediaManager? = null //uninitialized media manager
     private var mediaFileList: MutableList<MediaFile> = mutableListOf() //empty list of MediaFile objects
     private lateinit var detectorView: ImageView
@@ -95,37 +97,9 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         }
     }
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         operator = viewModel.getWaypointMissionOperator(this)
-
-        val rotation = Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).pitch(-90f).build()
-        try {
-            gimbal = DJISDKManager.getInstance().product.gimbal
-
-            gimbal.rotate(
-                rotation
-            ) { djiError ->
-                if (djiError == null) {
-                    Log.d("BANANAPIE", "rotate gimbal success")
-                    Toast.makeText(applicationContext, "rotate gimbal success", Toast.LENGTH_SHORT)
-                        .show()
-
-                    val handler = Handler(Looper.getMainLooper())
-                    handler.postDelayed({
-                        showClearMemoryDialog()
-                    }, 3000)
-
-                } else {
-                    Log.d("BANANAPIE", "rotate gimbal error " + djiError.description)
-                    Toast.makeText(applicationContext, djiError.description, Toast.LENGTH_SHORT)
-                        .show()
-                }
-            }
-        } catch (e: Exception) {
-            Log.d("BANANAPIE", "Drone is likely not connected")
-        }
 
         setContentView(R.layout.activity_flight_plan_mapbox)
 
@@ -234,6 +208,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
                 locateBtn.visibility = View.VISIBLE
                 cameraBtn.visibility = View.VISIBLE
+                showClearMemoryDialog()
             }
             R.id.start_flight_button -> {
                 when (viewModel.aircraft) {
@@ -337,59 +312,72 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     }
 
      private fun clearSDCard() {
-
          Log.d("BANANAPIE", "attempting to clear SD card")
-         DJIDemoApplication.getCameraInstance()?.let { camera -> //Get an instance of the connected DJI product's camera
-             mMediaManager = camera.mediaManager //Get the camera's MediaManager
+         mLoadingDialog.show(this.supportFragmentManager, "tagCanBeWhatever")
 
-             mMediaManager?.let { mediaManager ->
-                 //refreshing the MediaManager's file list using the connected DJI product's SD card
-                 mediaManager.refreshFileListOfStorageLocation(
-                     SettingsDefinitions.StorageLocation.SDCARD //file storage location
-                 ) { djiError -> //checking the callback error
+         DJIDemoApplication.getCameraInstance()
+             ?.let { camera -> //Get an instance of the connected DJI product's camera
+                 mMediaManager = camera.mediaManager //Get the camera's MediaManager
 
-                     //If the error is null, dismiss the loading screen ProgressDialog
-                     if (djiError == null) {
-                         Log.d("BANANAPIE", "obtained media data from SD card (FlightPlanActivity)")
+                 mMediaManager?.let { mediaManager ->
+                     //refreshing the MediaManager's file list using the connected DJI product's SD card
+                     mediaManager.refreshFileListOfStorageLocation(
+                         SettingsDefinitions.StorageLocation.SDCARD //file storage location
+                     ) { djiError -> //checking the callback error
+
+                         if (djiError == null) {
+                             Log.d(
+                                 "BANANAPIE",
+                                 "obtained media data from SD card (FlightPlanActivity)"
+                             )
+                         } else {
+                             Log.d(
+                                 "BANANAPIE",
+                                 "could not obtain media data from SD card (FlightPlanActivity)"
+                             )
+                         }
+                         //updating the mediaFileList using the now refreshed MediaManager's file list
+                         mediaManager.sdCardFileListSnapshot?.let { listOfMedia ->
+                             mediaFileList = listOfMedia
+                         }
+
+                         val delayTime =
+                             (mediaFileList.size * 2000).toLong() //assuming each stored image takes 2 seconds to delete
+
+                         if (mediaFileList.isEmpty()) {
+                             Log.d("BANANAPIE", "SD card is empty, there's nothing to clear")
+                         } else {
+                             mediaManager.deleteFiles(
+                                 mediaFileList,
+                                 object :
+                                     CommonCallbacks.CompletionCallbackWithTwoParam<List<MediaFile?>?, DJICameraError?> {
+                                     //if the deletion from the SD card is successful...
+                                     override fun onSuccess(
+                                         x: List<MediaFile?>?,
+                                         y: DJICameraError?
+                                     ) {
+                                         Log.d("BANANAPIE", "cleared SD card successfully")
+
+                                         //remove the deleted file from the mediaFileList
+                                         mediaFileList.clear()
+                                     }
+
+                                     //if the deletion from the SD card failed, alert the user
+                                     override fun onFailure(error: DJIError) {
+                                         Log.d("BANANAPIE", "failed to clear SD card")
+                                     }
+                                 })
+                         }
+
+                         val handler = Handler(Looper.getMainLooper())
+                         handler.postDelayed({
+                             mLoadingDialog.dismiss()
+                         }, delayTime)
                      }
-                     else{
-                         Log.d("BANANAPIE", "could not obtain media data from SD card (FlightPlanActivity)")
-                     }
-                     //updating the recycler view's mediaFileList using the now refreshed MediaManager's file list
-                     mediaManager.sdCardFileListSnapshot?.let { listOfMedia ->
-                         mediaFileList = listOfMedia
-                     }
-
-                     if (mediaFileList.isEmpty()){
-                         Log.d("BANANAPIE", "SD card is empty, there's nothing to clear")
-                     }
-                     else{
-                         mediaManager.deleteFiles(
-                             mediaFileList,
-                             object :
-                                 CommonCallbacks.CompletionCallbackWithTwoParam<List<MediaFile?>?, DJICameraError?> {
-                                 //if the deletion from the SD card is successful...
-                                 override fun onSuccess(
-                                     x: List<MediaFile?>?,
-                                     y: DJICameraError?
-                                 ) {
-                                     Log.d("BANANAPIE", "cleared SD card successfully")
-
-                                     //remove the deleted file from the mediaFileList
-                                     mediaFileList.clear()
-                                 }
-
-                                 //if the deletion from the SD card failed, alert the user
-                                 override fun onFailure(error: DJIError) {
-                                     Log.d("BANANAPIE", "failed to clear SD card")
-                                 }
-                             })
-                     }
-
                  }
              }
-         }
      }
+
 
     //Function that initializes the display for the videoSurface TextureView
     private fun initPreviewer() {
@@ -411,6 +399,9 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     }
 
     private fun initUI() {
+
+        mLoadingDialog = LoadingDialog("Clearing SD card...")
+        mLoadingDialog.isCancelable = false
 
         startFlightBtn = findViewById(R.id.start_flight_button)
         cancelFlightBtn = findViewById(R.id.cancel_flight_button)

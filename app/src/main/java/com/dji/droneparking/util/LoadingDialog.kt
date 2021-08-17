@@ -1,4 +1,4 @@
-package com.dji.droneparking.mission
+package com.dji.droneparking.util
 
 import android.app.Dialog
 import android.graphics.Color
@@ -10,7 +10,7 @@ import androidx.fragment.app.DialogFragment
 import com.dji.droneparking.databinding.LoadingDialogBinding
 
 
-class LoadingDialog() : DialogFragment() {
+class LoadingDialog(val text: String) : DialogFragment() {
 
     private var _binding: LoadingDialogBinding? = null
     private val binding get() = _binding!!
@@ -25,6 +25,7 @@ class LoadingDialog() : DialogFragment() {
         builder.setView(binding.root)
         builder.setCancelable(false)
 
+        binding.textView.text = text
 
         val dialog: Dialog = builder.create()
 

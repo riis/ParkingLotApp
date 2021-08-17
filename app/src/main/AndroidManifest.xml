@@ -86,7 +86,7 @@
         </activity>
 
         <activity
-            android:name=".util.PhotoStitcher"
+            android:name=".util.PhotoStitcherActivity"
             android:configChanges="keyboard|keyboardHidden|orientation"
             android:label="photo_stitcher_activity"
             android:screenOrientation="userLandscape"

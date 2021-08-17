@@ -19,13 +19,70 @@
         android:id="@+id/photos_recycler_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_marginTop="30dp"
+        android:layout_marginBottom="45dp"
         android:layout_marginHorizontal="30dp"
-        android:layout_marginVertical="30dp"
         android:background="@color/blue"
 
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textView3" />
+
+    <ImageView
+        android:id="@+id/stitched_image_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="30dp"
+        android:layout_marginBottom="45dp"
+        android:layout_marginHorizontal="30dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView3"
+        android:background="@color/purple_200"
+        android:visibility="gone">
+
+    </ImageView>
+
+    <Button
+        android:id="@+id/stitch_images_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Stitch Images"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/photos_recycler_view"
+        app:layout_constraintTop_toBottomOf="@+id/photos_recycler_view"
+        app:layout_constraintVertical_bias="1.0"
+        android:visibility="gone">
+
+    </Button>
+
+    <TextView
+        android:id="@+id/photo_stitch_progress_text_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/photo_stitching_progress_text"
+        android:textColor="@color/white"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/photos_recycler_view"
+        android:visibility="gone">
+
+    </TextView>
+
+    <ProgressBar
+        android:id="@+id/photo_stitch_progress_bar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/photo_stitch_progress_text_view"
+        app:layout_constraintTop_toBottomOf="@+id/photos_recycler_view"
+        app:layout_constraintVertical_bias="1.0"
+        android:visibility="gone">
+
+    </ProgressBar>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

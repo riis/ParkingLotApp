@@ -44,11 +44,6 @@ class DownloadDialog(val text: String) : DialogFragment() {
         return dialog
     }
 
-    fun setText(text: String){
-//        this.text = texts
-        return
-    }
-
     fun setProgress(progress: Int){
         binding.progressBar.progress = progress
     }

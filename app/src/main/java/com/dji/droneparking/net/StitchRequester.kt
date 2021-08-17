@@ -1,8 +1,8 @@
 package com.dji.droneparking.net
 
-import android.app.Notification
 import android.graphics.BitmapFactory
 import android.graphics.Bitmap
+import android.os.Handler
 import android.os.Message
 import android.util.Log
 import androidx.annotation.Nullable
@@ -12,7 +12,7 @@ import java.io.InputStreamReader
 import java.io.OutputStream
 import java.lang.Exception
 import java.net.URL
-import java.util.logging.Handler
+
 import javax.net.ssl.HttpsURLConnection
 
 
@@ -37,7 +37,7 @@ class StitchRequester {
     }
 
     //setting the handler to one provided by PhotoStitcherActivity.kt
-    fun setHandler(h: Handler?) {
+    fun setHandler(h: Handler) {
         this.mHandler = h
 
     }
@@ -80,7 +80,7 @@ class StitchRequester {
     }
 
     /* Add a list of images to the batch by sending it over the network */
-    fun addImages(images: List<Bitmap>) {
+    fun addImages(images: MutableList<Bitmap>) {
         Thread {
             for (image in images) {
                 val url: URL? = getURLforPath(NetworkInformation.PATH_STITCH_ADD_IMAGE)
@@ -115,15 +115,15 @@ class StitchRequester {
                         }
                     }
                 } catch (e: Exception) {
-                    Log.e(StitchRequester.Companion.TAG, "addImagesrunException: $e")
+                    Log.e(TAG, "addImagesrunException: $e")
                     sendMessage(StitchMessage.STITCH_IMAGE_ADD_FAILURE, null)
                     e.printStackTrace()
                 } finally {
                     connection?.disconnect()
                 }
-                Log.d(StitchRequester.Companion.TAG, "addImagesrunBeforeForEachEnd: ")
+                Log.d(TAG, "addImagesrunBeforeForEachEnd: ")
             }
-            Log.d(StitchRequester.Companion.TAG, "addImagesrunForEachEnd: ")
+            Log.d(TAG, "addImagesrunForEachEnd: ")
         }.start()
     }
 
@@ -163,20 +163,12 @@ class StitchRequester {
                 if (url != null) {
                     connection = url.openConnection() as HttpsURLConnection
                 }
+                connection?.requestMethod = "POST"
+                connection?.setRequestProperty("Batch-Id", batchId)
+                connection?.setRequestProperty("X-tag", xtag)
+                connection?.connect()
                 if (connection != null) {
-                    connection.setRequestMethod("POST")
-                }
-                if (connection != null) {
-                    connection.setRequestProperty("Batch-Id", batchId)
-                }
-                if (connection != null) {
-                    connection.setRequestProperty("X-tag", xtag)
-                }
-                if (connection != null) {
-                    connection.connect()
-                }
-                if (connection != null) {
-                    if (connection.getResponseCode() === HttpsURLConnection.HTTP_OK) {
+                    if (connection.responseCode == HttpsURLConnection.HTTP_OK) {
                         sendMessage(StitchMessage.STITCH_POLL_COMPLETE, null)
                     } else {
                         sendMessage(StitchMessage.STITCH_POLL_NOT_COMPLETE, null)
@@ -209,7 +201,7 @@ class StitchRequester {
                 val b = BitmapFactory.decodeStream(inputStream)
                 connection?.connect()
                 if (connection != null) {
-                    if (connection.getResponseCode() === HttpsURLConnection.HTTP_BAD_REQUEST) {
+                    if (connection.responseCode == HttpsURLConnection.HTTP_BAD_REQUEST) {
                         sendMessage(StitchMessage.STITCH_RESULT_FAILURE, null)
                     } else {
                         sendMessage(StitchMessage.STITCH_RESULT_SUCCESS, b)
@@ -236,10 +228,14 @@ class StitchRequester {
 
     private fun sendMessage(msg: StitchMessage, @Nullable companion: Any?) {
         val value = msg.value
-        val m: Message = mHandler.obtainMessage()
-        m.what = value
-        if (companion != null) m.obj = companion
-        m.sendToTarget()
+        val m: Message? = mHandler?.obtainMessage()
+        if (m != null) {
+            m.what = value
+        }
+        if (companion != null) if (m != null) {
+            m.obj = companion
+        }
+        m?.sendToTarget()
     }
 
     companion object {
