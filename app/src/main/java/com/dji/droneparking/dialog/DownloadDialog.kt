@@ -1,4 +1,4 @@
-package com.dji.droneparking.util
+package com.dji.droneparking.dialog
 
 import android.app.Dialog
 import android.graphics.Color

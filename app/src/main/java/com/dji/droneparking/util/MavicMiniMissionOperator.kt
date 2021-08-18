@@ -3,14 +3,12 @@ package com.dji.droneparking.util
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
+import com.dji.droneparking.activity.PhotoStitcherActivity
 import com.dji.droneparking.util.DJIDemoApplication.getCameraInstance
 import com.dji.droneparking.util.Tools.showToast
 import dji.common.camera.SettingsDefinitions
@@ -28,8 +26,9 @@ import dji.common.model.LocationCoordinate2D
 import dji.common.util.CommonCallbacks
 import dji.sdk.camera.Camera
 import dji.sdk.mission.waypoint.WaypointMissionOperatorListener
-import dji.sdk.sdkmanager.DJISDKManager
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.*
 import kotlin.math.abs
 import kotlin.math.pow
@@ -68,9 +67,6 @@ class MavicMiniMissionOperator(context: Context) {
     private var originalLongitudeDiff = -1.0
     private var originalLatitudeDiff = -1.0
     private var directions = Direction(altitude = 0f)
-    private var segmentCounter = 6.4008
-    private lateinit var mCompassListener: CompassListener
-    private var compassHeadingLiveData: MutableLiveData<Float> = MutableLiveData()
 
     private var currentGimbalPitch: Float = 0f
     private var gimbalPitchLiveData: MutableLiveData<Float> = MutableLiveData()
@@ -85,9 +81,6 @@ class MavicMiniMissionOperator(context: Context) {
         activity = context as AppCompatActivity
     }
 
-    fun interface CompassListener {
-        fun onHeadingUpdate(heading: Float)
-    }
 
     private fun initFlightController() {
         DJIDemoApplication.getFlightController()?.let { flightController ->
@@ -115,13 +108,6 @@ class MavicMiniMissionOperator(context: Context) {
 
                 droneLocationMutableLiveData.postValue(currentDroneLocation)
 
-
-                //TODO Implement code in FlightActivity to get code below to work
-//                val heading = DJIDemoApplication.getFlightController()?.compass?.heading
-//                if (heading != null) {
-//                    mCompassListener.onHeadingUpdate(heading)
-//                    compassHeadingLiveData.postValue(heading)
-//                }
             }
         }
     }
@@ -130,38 +116,6 @@ class MavicMiniMissionOperator(context: Context) {
         DJIDemoApplication.getGimbal()?.setStateCallback { gimbalState ->
             currentGimbalPitch = gimbalState.attitudeInDegrees.pitch
             gimbalPitchLiveData.postValue(currentGimbalPitch)
-        }
-    }
-
-    fun setCompassListener(listener: CompassListener) {
-        this.mCompassListener = listener
-    }
-
-    fun alignHeading() {
-        DJIDemoApplication.getFlightController()?.startTakeoff { error ->
-            if (error == null) {
-                sendDataTimer.cancel()
-                sendDataTimer = Timer()
-                activity.lifecycleScope.launch {
-                    withContext(Dispatchers.Main) {
-
-                        compassHeadingLiveData.observe(activity, { heading ->
-                            if (heading != 0f) {
-                                Log.d("STATUS", "heading not aligned")
-                                sendDataTask =
-                                    SendDataTask(0f, 0f, 0f, 1.2f)
-                                sendDataTimer.schedule(sendDataTask, 0, 200)
-                            } else {
-                                DJIDemoApplication.getFlightController()?.startLanding { error ->
-                                    if (error == null) {
-                                        this.cancel()
-                                    }
-                                }
-                            }
-                        })
-                    }
-                }
-            }
         }
     }
 
@@ -174,7 +128,7 @@ class MavicMiniMissionOperator(context: Context) {
 
     //Function for taking a a single photo using the DJI Product's camera
     private fun takePhoto() {
-        val camera: Camera = DJIDemoApplication.getCameraInstance() ?: return
+        val camera: Camera = getCameraInstance() ?: return
 
         // Setting the camera capture mode to SINGLE, and then taking a photo using the camera.
         // If the resulting callback for each operation returns an error that is null, then the two operations are successful.
@@ -227,7 +181,7 @@ class MavicMiniMissionOperator(context: Context) {
             rotateGimbalDown()
 
             gimbalPitchLiveData.observe(activity, { gimbalPitch ->
-                if (gimbalPitch == -90f && !isAirborne){
+                if (gimbalPitch == -90f && !isAirborne) {
                     isAirborne = true
                     showToast(activity, "Starting to Takeoff")
                     DJIDemoApplication.getFlightController()?.startTakeoff { error ->
@@ -247,7 +201,7 @@ class MavicMiniMissionOperator(context: Context) {
         }
     }
 
-    private fun rotateGimbalDown(){
+    private fun rotateGimbalDown() {
         val rotation = Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).pitch(-90f).build()
         try {
             val gimbal = DJIDemoApplication.getGimbal()
@@ -257,7 +211,7 @@ class MavicMiniMissionOperator(context: Context) {
             ) { djiError ->
                 if (djiError == null) {
                     Log.d("BANANAPIE", "rotate gimbal success")
-                    showToast(activity,"rotate gimbal success")
+                    showToast(activity, "rotate gimbal success")
 
                 } else {
                     Log.d("BANANAPIE", "rotate gimbal error " + djiError.description)
@@ -312,7 +266,7 @@ class MavicMiniMissionOperator(context: Context) {
                             currentWaypoint.coordinate.latitude,
                             currentWaypoint.coordinate.longitude,
 
-                        ),
+                            ),
                         LocationCoordinate2D(
                             currentLocation.latitude,
                             currentLocation.longitude
@@ -320,11 +274,11 @@ class MavicMiniMissionOperator(context: Context) {
                     )
 
                     //If the drone has arrived at the destination, take a photo.
-                    if (!photoTakenToggle && (distanceToWaypoint > -1.5) && (distanceToWaypoint < 1.5)) {//if you havent taken a photo
+                    if (!photoTakenToggle && (distanceToWaypoint < 1.5)) {//if you haven't taken a photo
                         Log.d("BANANAPIE", "PHOTO TAKEN SUCCESSFULLY")
                         takePhoto()
                         photoTakenToggle = true
-                    }else if (photoTakenToggle && (distanceToWaypoint > 1.5)){
+                    } else if (photoTakenToggle && (distanceToWaypoint > 1.5)) {
                         photoTakenToggle = false
                     }
 
@@ -351,11 +305,8 @@ class MavicMiniMissionOperator(context: Context) {
                             0.5f
                         )
 
-                        if (longitudeDiff > 0) {
-                            directions.pitch = speed
-                        } else {
-                            directions.pitch = -speed
-                        }
+                        directions.pitch = if (longitudeDiff > 0) speed else -speed
+
                     }
 
                     if (!travelledLatitude) {
@@ -364,11 +315,8 @@ class MavicMiniMissionOperator(context: Context) {
                             0.5f
                         )
 
-                        if (latitudeDiff > 0) {
-                            directions.roll = speed
-                        } else {
-                            directions.roll = -speed
-                        }
+                        directions.roll = if (latitudeDiff > 0) speed else -speed
+
                     }
 
                     //when the longitude difference becomes insignificant:
@@ -412,8 +360,8 @@ class MavicMiniMissionOperator(context: Context) {
                         move(directions)
                     }
 
-                    if (isLanding && currentLocation.altitude == 0f){
-                        if (!isLanded){
+                    if (isLanding && currentLocation.altitude == 0f) {
+                        if (!isLanded) {
                             sendDataTimer.cancel()
                             isLanded = true
                             getPhotoStitcher()
@@ -434,27 +382,22 @@ class MavicMiniMissionOperator(context: Context) {
             SendDataTask(dir.pitch, dir.roll, dir.yaw, dir.altitude)
         sendDataTimer.schedule(sendDataTask, 0, 200)
     }
-
-    fun resumeMission() {
-        //TODO
-    }
-
-    fun pauseMission() {
-        //TODO
-    }
+//TODO
+// -   fun resumeMission() {
+// -
+// -   }
+// -
+// -   fun pauseMission() {
+// -
+// -   }
 
     //Function used to stop the current waypoint mission and land the drone
     fun stopMission(callback: CommonCallbacks.CompletionCallback<DJIMissionError>?) {
-        if (!isLanding){
+        if (!isLanding) {
             showToast(activity, "trying to land")
         }
         DJIDemoApplication.getFlightController()?.startLanding(callback)
 
-    }
-
-    //Function used to upload the
-    fun retryUploadMission(callback: CommonCallbacks.CompletionCallback<DJIMissionError>?) {
-        uploadMission(callback)
     }
 
     /*

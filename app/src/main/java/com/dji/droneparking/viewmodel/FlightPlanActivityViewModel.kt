@@ -1,4 +1,4 @@
-package com.dji.droneparking
+package com.dji.droneparking.viewmodel
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
