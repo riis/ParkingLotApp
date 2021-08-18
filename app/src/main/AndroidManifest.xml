@@ -46,7 +46,7 @@
             android:value="@integer/google_play_services_version" />
 
         <activity
-            android:name=".ConnectionActivity"
+            android:name=".activity.ConnectionActivity"
             android:configChanges="orientation"
             android:launchMode="singleTop"
             android:screenOrientation="portrait">
@@ -75,7 +75,7 @@
             android:value="${DJI_API_KEY}" />
 
         <activity
-            android:name=".FlightPlanActivity"
+            android:name=".activity.FlightPlanActivity"
             android:configChanges="keyboard|keyboardHidden|orientation"
             android:label="@string/title_activity_flight_plan"
             android:screenOrientation="userLandscape"
@@ -86,7 +86,7 @@
         </activity>
 
         <activity
-            android:name=".util.PhotoStitcherActivity"
+            android:name=".activity.PhotoStitcherActivity"
             android:configChanges="keyboard|keyboardHidden|orientation"
             android:label="photo_stitcher_activity"
             android:screenOrientation="userLandscape"

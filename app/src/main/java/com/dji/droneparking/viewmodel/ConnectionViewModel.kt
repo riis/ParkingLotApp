@@ -1,9 +1,10 @@
-package com.dji.droneparking
+package com.dji.droneparking.viewmodel
 
 import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
+import com.dji.droneparking.activity.ConnectionActivity
 import dji.common.error.DJIError
 import dji.common.error.DJISDKError
 import dji.sdk.base.BaseComponent

@@ -1,4 +1,4 @@
-package com.dji.droneparking.util
+package com.dji.droneparking.activity
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -13,16 +13,19 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.dji.droneparking.R
+import com.dji.droneparking.dialog.DownloadDialog
+import com.dji.droneparking.dialog.LoadingDialog
 import dji.common.camera.SettingsDefinitions
 import dji.common.error.DJIError
 import dji.sdk.media.*
 import java.io.File
 import java.util.*
 import com.dji.droneparking.net.StitchRequester
+import com.dji.droneparking.util.DJIDemoApplication
 import kotlin.collections.HashMap
 
 
-class PhotoStitcherActivity(): AppCompatActivity(), View.OnClickListener{
+class PhotoStitcherActivity : AppCompatActivity(), View.OnClickListener{
 
     //class variables
     private var mediaFileList: MutableList<MediaFile> = mutableListOf() //empty list of MediaFile objects
@@ -131,7 +134,7 @@ class PhotoStitcherActivity(): AppCompatActivity(), View.OnClickListener{
 
             //If there is a DJI product connected to the mobile device...
         } else {
-            Log.d("BANANAPIE", "Product connnected")
+            Log.d("BANANAPIE", "Product connected")
             //get an instance of the DJI product's camera
             DJIDemoApplication.getCameraInstance()?.let { camera ->
                 //If the camera supports downloading media from it...
@@ -280,9 +283,7 @@ class PhotoStitcherActivity(): AppCompatActivity(), View.OnClickListener{
 
         //Using the scheduler to move each task to the back of its download queue.
         //The task will be executed after all other tasks are completed.
-        scheduler?.let {
-            it.moveTaskToEnd(task)
-        }
+        scheduler?.moveTaskToEnd(task)
     }
 
     //Creating a ViewHolder to store the item views displayed in the RecyclerView
@@ -465,14 +466,16 @@ class PhotoStitcherActivity(): AppCompatActivity(), View.OnClickListener{
                 val what: Int = msg.what
                 photoStitchProgressTextView.visibility = View.VISIBLE
 
-                if (what == StitchRequester.StitchMessage.STITCH_IMAGE_ADD_SUCCESS.value){
-                    photoStitchProgressTextView.text = displayables[what] + "${imageUploadCount+1}/${getDownloadedImagesList().size}"
-                }
-                else if (what == StitchRequester.StitchMessage.STITCH_IMAGE_ADD_FAILURE.value){
-                    photoStitchProgressTextView.text = displayables[what] + "${imageUploadCount+1}/${getDownloadedImagesList().size}, moving on..."
-                }
-                else{
-                    photoStitchProgressTextView.text = displayables[what]
+                when (what) {
+                    StitchRequester.StitchMessage.STITCH_IMAGE_ADD_SUCCESS.value -> {
+                        photoStitchProgressTextView.text = displayables[what] + "${imageUploadCount+1}/${getDownloadedImagesList().size}"
+                    }
+                    StitchRequester.StitchMessage.STITCH_IMAGE_ADD_FAILURE.value -> {
+                        photoStitchProgressTextView.text = displayables[what] + "${imageUploadCount+1}/${getDownloadedImagesList().size}, moving on..."
+                    }
+                    else -> {
+                        photoStitchProgressTextView.text = displayables[what]
+                    }
                 }
                 Log.d("STITCH", "handleMessage: " + photoStitchProgressTextView.text)
 

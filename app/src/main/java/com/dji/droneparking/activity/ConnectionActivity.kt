@@ -1,4 +1,4 @@
-package com.dji.droneparking
+package com.dji.droneparking.activity
 
 import android.Manifest
 import android.content.Intent
@@ -8,7 +8,8 @@ import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.lifecycle.Observer
+import com.dji.droneparking.viewmodel.ConnectionViewModel
+import com.dji.droneparking.R
 import dji.sdk.sdkmanager.DJISDKManager
 
 class ConnectionActivity : AppCompatActivity() {
@@ -69,7 +70,7 @@ class ConnectionActivity : AppCompatActivity() {
     }
 
     private fun observers() {
-        model.connectionStatus.observe(this, Observer<Boolean> { isConnected ->
+        model.connectionStatus.observe(this, { isConnected ->
             if (isConnected) {
                 mTextConnectionStatus.text = "Status: Connected"
                 mBtnOpen.isEnabled = true
@@ -79,7 +80,7 @@ class ConnectionActivity : AppCompatActivity() {
             }
         })
 
-        model.product.observe(this, Observer { baseProduct ->
+        model.product.observe(this, { baseProduct ->
             if (baseProduct != null && baseProduct.isConnected) {
                 mTextModelAvailable.text = baseProduct.firmwarePackageVersion
                 mTextProduct.text = baseProduct.model.displayName
