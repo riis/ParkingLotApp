@@ -234,7 +234,12 @@ class MavicMiniMissionOperator(context: Context) {
                         if (error == null) {
                             callback?.onResult(null)
                             this.state = WaypointMissionState.READY_TO_EXECUTE
-                            executeMission()
+
+                            val handler = Handler(Looper.getMainLooper())
+                            handler.postDelayed({
+                                executeMission()
+                            }, 3000)
+
                         } else {
                             callback?.onResult(error)
                         }

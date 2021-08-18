@@ -342,7 +342,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                          }
 
                          val delayTime =
-                             (mediaFileList.size * 2000).toLong() //assuming each stored image takes 2 seconds to delete
+                             (mediaFileList.size * 3000).toLong() //assuming each stored image takes 2 seconds to delete
 
                          if (mediaFileList.isEmpty()) {
                              Log.d("BANANAPIE", "SD card is empty, there's nothing to clear")
@@ -533,7 +533,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             viewModel.flightPlan =
                 FlightPlanner.createFlightPlan(
                     newPoints,
-                    60.0f,
+                    35.0f,
                     viewModel.polygonCoordinates
                 ) // get plan
 
