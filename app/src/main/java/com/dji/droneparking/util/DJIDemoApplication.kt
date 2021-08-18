@@ -3,6 +3,7 @@ package com.dji.droneparking.util
 import dji.sdk.base.BaseProduct
 import dji.sdk.camera.Camera
 import dji.sdk.flightcontroller.FlightController
+import dji.sdk.gimbal.Gimbal
 import dji.sdk.products.Aircraft
 import dji.sdk.products.HandHeld
 import dji.sdk.sdkmanager.DJISDKManager
@@ -29,6 +30,16 @@ object DJIDemoApplication {
         if (product.isConnected) {
             if (product is Aircraft) {
                 return product.flightController
+            }
+        }
+        return null
+    }
+
+    fun getGimbal(): Gimbal? {
+        val product = getProductInstance() ?: return null
+        if (product.isConnected) {
+            if (product is Aircraft) {
+                return product.gimbal
             }
         }
         return null

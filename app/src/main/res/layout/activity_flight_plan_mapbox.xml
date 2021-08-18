@@ -183,8 +183,6 @@
 
     </LinearLayout>
 
-
-
     <Button
         android:id="@+id/locate_button"
         android:layout_width="150dp"

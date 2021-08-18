@@ -36,4 +36,6 @@
     <string name="camera">camera</string>
     <string name="locate">locate</string>
     <string name="photo_stitch">Photo Stitch</string>
+    <string name="photo_stitching_progress_text">Photo-stitching progress text</string>
+    <string name="loading">Loading...</string>
 </resources>
