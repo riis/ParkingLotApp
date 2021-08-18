@@ -18,6 +18,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
@@ -749,12 +750,12 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     }
 
     //When a SurfaceTexture is updated
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
 //        viewModel.bitmap.postValue(videoSurface.bitmap)
 
         videoSurface.bitmap?.let {
-            val mutableBitmap = it.copy(Bitmap.Config.RGBA_F16, true)
-            runObjectDetection(mutableBitmap) }
+            runObjectDetection(it) }
 
     }
 
@@ -777,9 +778,13 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         val results: List<Classifier.Recognition?>? = viewModel.detector?.recognizeImage(bitmap)
         runOnUiThread {
-            detectorView.setImageBitmap(handleResult(bitmap,
+            val outputImg = handleResult(bitmap,
                 results as List<Classifier.Recognition>
-            ))
+            )
+            Log.d("BANANAPIE", "${outputImg.width}  x  ${outputImg.height}")
+            detectorView.setImageBitmap(Bitmap.createScaledBitmap(outputImg,
+                2611,
+                1180, false))
         }
 
 

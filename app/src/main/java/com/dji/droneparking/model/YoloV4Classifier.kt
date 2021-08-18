@@ -46,92 +46,43 @@ import java.io.ByteArrayOutputStream
  * - https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/running_on_mobile_tensorflowlite.md#running-our-model-on-android
  */
 open class YoloV4Classifier private constructor() : Classifier {
+    var processing = false
 
     override fun recognizeImage(bitmap: Bitmap?): List<Recognition?>? {
-        Log.d("BANANAPIE", "bitsch " + bitmap.toString())
-        val byteBuffer = bitmap?.let { convertBitmapToByteBuffer(it) }
-//        val stream = ByteArrayOutputStream()
-//        bitmap?.compress(Bitmap.CompressFormat.PNG, 100, stream)
-//        val byteArray: ByteArray = stream.toByteArray()
-//        val byteBuffer = ByteBuffer.wrap(byteArray)
+        processing = true
+        val scalarX = bitmap!!.width / 416.0f
+        val scalarY = bitmap.height / 416.0f
+        val byteBuffer = convertBitmapToByteBuffer(bitmap)
 
-//        Map<Integer, Object> outputMap = new HashMap<>();
-//        for (int i = 0; i < OUTPUT_WIDTH.length; i++) {
-//            float[][][][][] out = new float[1][OUTPUT_WIDTH[i]][OUTPUT_WIDTH[i]][3][5 + labels.size()];
-//            outputMap.put(i, out);
-//        }
-//
-//        Log.d("YoloV4Classifier", "mObjThresh: " + getObjThresh());
-//
-//        Object[] inputArray = {byteBuffer};
-//        tfLite.runForMultipleInputsOutputs(inputArray, outputMap);
-//
-//        ArrayList<Recognition> detections = new ArrayList<Recognition>();
-//
-//        for (int i = 0; i < OUTPUT_WIDTH.length; i++) {
-//            int gridWidth = OUTPUT_WIDTH[i];
-//            float[][][][][] out = (float[][][][][]) outputMap.get(i);
-//
-//            Log.d("YoloV4Classifier", "out[" + i + "] detect start");
-//            for (int y = 0; y < gridWidth; ++y) {
-//                for (int x = 0; x < gridWidth; ++x) {
-//                    for (int b = 0; b < NUM_BOXES_PER_BLOCK; ++b) {
-//                        final int offset =
-//                                (gridWidth * (NUM_BOXES_PER_BLOCK * (labels.size() + 5))) * y
-//                                        + (NUM_BOXES_PER_BLOCK * (labels.size() + 5)) * x
-//                                        + (labels.size() + 5) * b;
-//
-//                        final float confidence = expit(out[0][y][x][b][4]);
-//                        int detectedClass = -1;
-//                        float maxClass = 0;
-//
-//                        final float[] classes = new float[labels.size()];
-//                        for (int c = 0; c < labels.size(); ++c) {
-//                            classes[c] = out[0][y][x][b][5 + c];
-//                        }
-//
-//                        for (int c = 0; c < labels.size(); ++c) {
-//                            if (classes[c] > maxClass) {
-//                                detectedClass = c;
-//                                maxClass = classes[c];
-//                            }
-//                        }
-//
-//                        final float confidenceInClass = maxClass * confidence;
-//                        if (confidenceInClass > getObjThresh()) {
-////                            final float xPos = (x + (expit(out[0][y][x][b][0]) * XYSCALE[i]) - (0.5f * (XYSCALE[i] - 1))) * (INPUT_SIZE / gridWidth);
-////                            final float yPos = (y + (expit(out[0][y][x][b][1]) * XYSCALE[i]) - (0.5f * (XYSCALE[i] - 1))) * (INPUT_SIZE / gridWidth);
-//
-//                            final float xPos = (x + expit(out[0][y][x][b][0])) * (1.0f * INPUT_SIZE / gridWidth);
-//                            final float yPos = (y + expit(out[0][y][x][b][1])) * (1.0f * INPUT_SIZE / gridWidth);
-//
-//                            final float w = (float) (Math.exp(out[0][y][x][b][2]) * ANCHORS[2 * MASKS[i][b]]);
-//                            final float h = (float) (Math.exp(out[0][y][x][b][3]) * ANCHORS[2 * MASKS[i][b] + 1]);
-//
-//                            final RectF rect =
-//                                    new RectF(
-//                                            Math.max(0, xPos - w / 2),
-//                                            Math.max(0, yPos - h / 2),
-//                                            Math.min(bitmap.getWidth() - 1, xPos + w / 2),
-//                                            Math.min(bitmap.getHeight() - 1, yPos + h / 2));
-//                            detections.add(new Recognition("" + offset, labels.get(detectedClass),
-//                                    confidenceInClass, rect, detectedClass));
-//                        }
-//                    }
-//                }
-//            }
-//            Log.d("YoloV4Classifier", "out[" + i + "] detect end");
-//        }
-        val detections: ArrayList<Recognition>? = if (isTiny) {
-            byteBuffer?.let {
-                getDetectionsForTiny(it, bitmap!!)
-            }
+        val detections: ArrayList<Recognition> = if (isTiny) {
+            getDetectionsForTiny(byteBuffer, bitmap)
         } else {
-            byteBuffer?.let {
-                getDetectionsForFull(it, bitmap!!)
-            }
+            getDetectionsForFull(byteBuffer, bitmap)
         }
-        return detections?.let { nms(it) }
+        val recognitions = nms(detections)
+        processing = false
+
+        for (element in recognitions) {
+            val bottom = element.getLocation().bottom * scalarY
+            val top = element.getLocation().top * scalarY
+            val left = element.getLocation().left * scalarX
+            val right = element.getLocation().right * scalarX
+            val tempRect = RectF(left, top, right, bottom)
+            element.setLocation(tempRect)
+        }
+
+        return recognitions
+//
+//        val detections: ArrayList<Recognition>? = if (isTiny) {
+//            byteBuffer?.let {
+//                getDetectionsForTiny(it, bitmap!!)
+//            }
+//        } else {
+//            byteBuffer?.let {
+//                getDetectionsForFull(it, bitmap!!)
+//            }
+//        }
+//        return detections?.let { nms(it) }
     }
 
     override fun enableStatLogging(debug: Boolean) {}
@@ -139,6 +90,7 @@ open class YoloV4Classifier private constructor() : Classifier {
         get() = ""
 
     override fun close() {}
+
 //    override fun setNumThreads(num_threads: Int) {
 //        tfLite?.setNumThreads(num_threads)
 //    }
@@ -233,7 +185,23 @@ open class YoloV4Classifier private constructor() : Classifier {
     /**
      * Writes Image data into a `ByteBuffer`.
      */
-    private fun convertBitmapToByteBuffer(bitmap: Bitmap): ByteBuffer {
+    private fun convertBitmapToByteBuffer(bitmap_main: Bitmap): ByteBuffer {
+//        val byteBuffer =
+//            ByteBuffer.allocateDirect(4 * BATCH_SIZE * INPUT_SIZE * INPUT_SIZE * PIXEL_SIZE)
+//        byteBuffer.order(ByteOrder.nativeOrder())
+//        val intValues = IntArray(INPUT_SIZE * INPUT_SIZE)
+//        bitmap.getPixels(intValues, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+//        var pixel = 0
+//        for (i in 0 until INPUT_SIZE) {
+//            for (j in 0 until INPUT_SIZE) {
+//                val `val` = intValues[pixel++]
+//                byteBuffer.putFloat((`val` shr 16 and 0xFF) / 255.0f)
+//                byteBuffer.putFloat((`val` shr 8 and 0xFF) / 255.0f)
+//                byteBuffer.putFloat((`val` and 0xFF) / 255.0f)
+//            }
+//        }
+//        return byteBuffer
+        val bitmap = Bitmap.createScaledBitmap(bitmap_main, INPUT_SIZE, INPUT_SIZE, false)
         val byteBuffer =
             ByteBuffer.allocateDirect(4 * BATCH_SIZE * INPUT_SIZE * INPUT_SIZE * PIXEL_SIZE)
         byteBuffer.order(ByteOrder.nativeOrder())
