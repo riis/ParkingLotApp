@@ -135,20 +135,26 @@ class MavicMiniMissionOperator(context: Context) {
         // Setting the camera capture mode to SINGLE, and then taking a photo using the camera.
         // If the resulting callback for each operation returns an error that is null, then the two operations are successful.
         val photoMode = SettingsDefinitions.ShootPhotoMode.SINGLE
-        camera.setShootPhotoMode(photoMode) { djiError ->
-            if (djiError == null) {
-                activity.lifecycleScope.launch {
-                    camera.startShootPhoto { djiErrorSecond ->
-                        if (djiErrorSecond == null) {
-                            Log.i("STATUS", "take photo: success")
-                        } else {
-                            Log.i("STATUS", "Take Photo Failure: ${djiError?.description}")
+
+        val handler = Handler(Looper.getMainLooper())
+        handler.postDelayed({
+            camera.setShootPhotoMode(photoMode) { djiError ->
+                if (djiError == null) {
+                    activity.lifecycleScope.launch {
+                        camera.startShootPhoto { djiErrorSecond ->
+                            if (djiErrorSecond == null) {
+                                Log.i("STATUS", "take photo: success")
+                                showToast(activity, "take photo: success")
+
+                            } else {
+                                Log.i("STATUS", "Take Photo Failure: ${djiError?.description}")
+                                showToast(activity, "take photo: failure")
+                            }
                         }
                     }
                 }
             }
-        }
-
+        }, 1000)
     }
 
 
