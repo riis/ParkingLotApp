@@ -209,7 +209,7 @@ class MavicMiniMissionOperator(context: Context) {
                             val handler = Handler(Looper.getMainLooper())
                             handler.postDelayed({
                                 executeMission()
-                            }, 5000)
+                            }, 8000)
 
 
                         } else {
@@ -409,7 +409,7 @@ class MavicMiniMissionOperator(context: Context) {
         if (!isLanding) {
             showToast(activity, "trying to land")
         }
-        DJIDemoApplication.getFlightController()?.startLanding(callback)
+        DJIDemoApplication.getFlightController()?.startGoHome(callback)
 
     }
 
