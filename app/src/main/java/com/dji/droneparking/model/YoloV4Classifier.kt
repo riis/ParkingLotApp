@@ -29,6 +29,11 @@ import java.lang.RuntimeException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.*
+import android.R
+
+import android.graphics.BitmapFactory
+import java.io.ByteArrayOutputStream
+
 
 /**
  * Wrapper for frozen detection models trained using the Tensorflow Object Detection API:
@@ -43,7 +48,12 @@ import java.util.*
 open class YoloV4Classifier private constructor() : Classifier {
 
     override fun recognizeImage(bitmap: Bitmap?): List<Recognition?>? {
+        Log.d("BANANAPIE", "bitsch " + bitmap.toString())
         val byteBuffer = bitmap?.let { convertBitmapToByteBuffer(it) }
+//        val stream = ByteArrayOutputStream()
+//        bitmap?.compress(Bitmap.CompressFormat.PNG, 100, stream)
+//        val byteArray: ByteArray = stream.toByteArray()
+//        val byteBuffer = ByteBuffer.wrap(byteArray)
 
 //        Map<Integer, Object> outputMap = new HashMap<>();
 //        for (int i = 0; i < OUTPUT_WIDTH.length; i++) {
@@ -114,11 +124,11 @@ open class YoloV4Classifier private constructor() : Classifier {
 //        }
         val detections: ArrayList<Recognition>? = if (isTiny) {
             byteBuffer?.let {
-                getDetectionsForTiny(it, bitmap)
+                getDetectionsForTiny(it, bitmap!!)
             }
         } else {
             byteBuffer?.let {
-                getDetectionsForFull(it, bitmap)
+                getDetectionsForFull(it, bitmap!!)
             }
         }
         return detections?.let { nms(it) }

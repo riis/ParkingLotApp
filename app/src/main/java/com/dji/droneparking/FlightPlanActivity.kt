@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.*
 import android.media.ImageReader
 import android.media.ImageReader.OnImageAvailableListener
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -740,7 +741,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
 //        lifecycleScope.launch(Dispatchers.Default) {
 //            while (true) {
-//                delay(200)
+//                delay(1000)
 //                videoSurface.bitmap?.let { runObjectDetection(it) }
 //
 //            }
@@ -750,7 +751,10 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     //When a SurfaceTexture is updated
     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
 //        viewModel.bitmap.postValue(videoSurface.bitmap)
-        videoSurface.bitmap?.let { runObjectDetection(it) }
+
+        videoSurface.bitmap?.let {
+            val mutableBitmap = it.copy(Bitmap.Config.RGBA_F16, true)
+            runObjectDetection(mutableBitmap) }
 
     }
 
