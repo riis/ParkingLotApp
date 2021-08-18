@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.dji.droneparking.model.Classifier
 import com.dji.droneparking.util.MavicMiniMissionOperator
 import com.dji.droneparking.util.WaypointMissionManager
 import com.mapbox.mapboxsdk.geometry.LatLng
@@ -20,9 +21,15 @@ import java.util.*
 
 class FlightPlanActivityViewModel : ViewModel() {
     var frameCounter = 0
-    var detector: ObjectDetector? = null
+    var detector: Classifier? = null
     var options: ObjectDetector.ObjectDetectorOptions? = null
     var bitmap: Bitmap? = null
+
+    val MINIMUM_CONFIDENCE_TF_OD_API = 0.5f
+    val TF_OD_API_INPUT_SIZE = 416
+    val TF_OD_API_IS_QUANTIZED = false
+    val TF_OD_API_MODEL_FILE = "model.tflite"
+    val TF_OD_API_LABELS_FILE = "file:///android_asset/coco.txt"
 
 
 
