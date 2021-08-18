@@ -191,10 +191,20 @@ class MavicMiniMissionOperator(context: Context) {
                             callback?.onResult(null)
                             this.state = WaypointMissionState.READY_TO_EXECUTE
 
+                            getCameraInstance()?.setMode(SettingsDefinitions.CameraMode.SHOOT_PHOTO) { error ->
+                                if (error == null) {
+                                    showToast(activity, "Switch Camera Mode Succeeded")
+                                    Log.d("BANANAPIE", "Switch Camera Mode Succeeded")
+                                } else {
+                                    showToast(activity, "Switch Camera Error: ${error.description}")
+                                }
+                            }
+
                             val handler = Handler(Looper.getMainLooper())
                             handler.postDelayed({
                                 executeMission()
-                            }, 3000)
+                            }, 5000)
+
 
                         } else {
                             callback?.onResult(error)
@@ -246,16 +256,6 @@ class MavicMiniMissionOperator(context: Context) {
     private fun executeMission() {
         state = WaypointMissionState.EXECUTION_STARTING
         operatorListener?.onExecutionStart()
-
-        val camera: Camera = getCameraInstance() ?: return
-
-        camera.setMode(SettingsDefinitions.CameraMode.SHOOT_PHOTO) { error ->
-            if (error == null) {
-                showToast(activity, "Switch Camera Mode Succeeded")
-            } else {
-                showToast(activity, "Switch Camera Error: ${error.description}")
-            }
-        }
 
         //running the execution in a coroutine to prevent blocking the main thread
         activity.lifecycleScope.launch {
