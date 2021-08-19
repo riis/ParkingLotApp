@@ -14,7 +14,6 @@ limitations under the License.
 ==============================================================================*/
 package com.dji.droneparking.model
 
-
 import android.graphics.Bitmap
 import android.graphics.RectF
 
@@ -22,7 +21,7 @@ import android.graphics.RectF
  * Generic interface for interacting with different recognition engines.
  */
 interface Classifier {
-    fun recognizeImage(bitmap: Bitmap?): List<Recognition?>?
+    fun recognizeImage(bitmap: Bitmap?): List<Recognition>
     fun enableStatLogging(debug: Boolean)
     val statString: String?
 

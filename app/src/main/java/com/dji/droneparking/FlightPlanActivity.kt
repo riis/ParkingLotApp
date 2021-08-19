@@ -13,10 +13,7 @@ import android.util.Log
 import android.view.TextureView
 import android.view.View
 import android.view.WindowManager
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.Toast
+import android.widget.*
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
@@ -26,6 +23,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import com.dji.droneparking.model.Classifier
 import com.dji.droneparking.model.YoloV4Classifier
+import com.dji.droneparking.tracker.MultiBoxTracker
 import com.dji.droneparking.util.*
 import com.dji.droneparking.util.Tools.showToast
 import com.mapbox.mapboxsdk.Mapbox
@@ -82,6 +80,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var videoSurface: TextureView
     private lateinit var videoView: CardView
     private lateinit var gimbal: Gimbal
+//    private lateinit var test:TextView
 
     private lateinit var mLoadingDialog: LoadingDialog
 
@@ -122,6 +121,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 //            "model.tflite", // must be same as the filename in assets folder
 //            viewModel.options
 //        )
+//        test = findViewById(R.id.test)
 
         viewModel.detector = YoloV4Classifier.create(
             assets,
@@ -739,7 +739,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         if (viewModel.codecManager == null) {
             viewModel.codecManager = DJICodecManager(this, surface, width, height)
         }
-
+        viewModel.boxTracker = MultiBoxTracker(videoSurface.context)
 //        lifecycleScope.launch(Dispatchers.Default) {
 //            while (true) {
 //                delay(1000)
@@ -775,17 +775,32 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
      *      TFLite Object Detection function
      */
     private fun runObjectDetection(bitmap: Bitmap) {
+        val results: List<Classifier.Recognition> = viewModel.detector.recognizeImage(bitmap)
 
-        val results: List<Classifier.Recognition?>? = viewModel.detector?.recognizeImage(bitmap)
-        runOnUiThread {
-            val outputImg = handleResult(bitmap,
-                results as List<Classifier.Recognition>
-            )
-            Log.d("BANANAPIE", "${outputImg.width}  x  ${outputImg.height}")
-            detectorView.setImageBitmap(Bitmap.createScaledBitmap(outputImg,
-                2611,
-                1180, false))
-        }
+        val currentFrameCopy = bitmap.copy(bitmap.config, true)
+
+        // Get a byte array from the current frame and send it to the tracker
+        val imageOut = ByteArrayOutputStream()
+        currentFrameCopy.compress(Bitmap.CompressFormat.JPEG, 100, imageOut)
+        val currentFrameBytes = imageOut.toByteArray()
+
+        viewModel.boxTracker?.trackResults(results, currentFrameBytes, 0)
+
+        // Draw the boxes onto bitmap
+        val drawOntoFrame = Canvas(currentFrameCopy)
+
+        viewModel.boxTracker?.draw(drawOntoFrame)
+
+        detectorView.setImageBitmap(currentFrameCopy)
+//        runOnUiThread {
+//            val outputImg = handleResult(bitmap,
+//                results
+//            )
+//            Log.d("BANANAPIE", "${outputImg.width}  x  ${outputImg.height}")
+//            detectorView.setImageBitmap(Bitmap.createScaledBitmap(outputImg,
+//                2611,
+//                1180, false))
+//        }
 
 
 //        // Step 1: create TFLite's TensorImage object
@@ -847,6 +862,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             val location: RectF = result.getLocation()
             if (result.confidence!! >= viewModel.MINIMUM_CONFIDENCE_TF_OD_API) {
                 canvas.drawRect(location, paint)
+                Log.d("BANANAPIE", location.toString())
                 //                cropToFrameTransform.mapRect(location);
 //
 //                result.setLocation(location);

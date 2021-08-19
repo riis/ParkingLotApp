@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.dji.droneparking.model.Classifier
+import com.dji.droneparking.tracker.MultiBoxTracker
 import com.dji.droneparking.util.MavicMiniMissionOperator
 import com.dji.droneparking.util.WaypointMissionManager
 import com.mapbox.mapboxsdk.geometry.LatLng
@@ -21,9 +22,10 @@ import java.util.*
 
 class FlightPlanActivityViewModel : ViewModel() {
     var frameCounter = 0
-    var detector: Classifier? = null
+    lateinit var detector: Classifier
     var options: ObjectDetector.ObjectDetectorOptions? = null
     var bitmap: Bitmap? = null
+    var boxTracker: MultiBoxTracker? = null
 
     val MINIMUM_CONFIDENCE_TF_OD_API = 0.5f
     val TF_OD_API_INPUT_SIZE = 416
