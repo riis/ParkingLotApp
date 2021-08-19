@@ -16,7 +16,7 @@ object FlightPlanner {
     private const val MAX_FLIGHT_SPEED = 5.0f
 
     /// The base automatic flight speed for the plan
-    private const val AUTO_FLIGHT_SPEED = 5.0f
+    private const val AUTO_FLIGHT_SPEED = 3.0f
 
     /// The altitude to fly at (in m)
     private const val ALTITUDE = 15.0f
