@@ -21,7 +21,7 @@ object FlightPlanner {
     /// The altitude to fly at (in m)
     private const val ALTITUDE = 15.0f
 
-    /// Turns a lits of coordinates constituting a flight plan into a waypoint path.
+    /// Turns a list of coordinates constituting a flight plan into a waypoint path.
     fun createFlightMissionFromCoordinates(coords: List<LocationCoordinate2D>): WaypointMission {
         val missionBuilder = WaypointMission.Builder()
         missionBuilder.maxFlightSpeed(MAX_FLIGHT_SPEED)
