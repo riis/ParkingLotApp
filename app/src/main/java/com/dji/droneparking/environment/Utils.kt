@@ -1,4 +1,4 @@
-package com.dji.droneparking.model
+package com.dji.droneparking.environment
 
 import android.content.Context
 import kotlin.Throws
@@ -155,8 +155,10 @@ object Utils {
             val fileName = "myFile.txt"
             val file = File(baseDir + File.separator + fileName)
             val stream = FileOutputStream(file)
-            stream.use { stream ->
+            try {
                 stream.write(data.toByteArray())
+            } finally {
+                stream.close()
             }
         } catch (e: IOException) {
             Log.e("Exception", "File write failed: $e")

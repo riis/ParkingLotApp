@@ -1,21 +1,39 @@
-package com.dji.droneparking.model
+/* Copyright 2019 The TensorFlow Authors. All Rights Reserved.
 
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+==============================================================================*/
+package com.dji.droneparking.environment
+
+import android.content.ContentResolver
+import android.content.ContentValues
+import android.content.Context
 import kotlin.jvm.JvmOverloads
 import android.graphics.Bitmap
 import android.graphics.Matrix
-import android.os.Environment
+import android.provider.MediaStore
+import android.provider.SyncStateContract.Helpers.insert
 import android.util.Log
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.lang.Exception
-import kotlin.math.abs
 
 /** Utility class for manipulating images.  */
 object ImageUtils {
     // This value is 2 ^ 18 - 1, and is used to clamp the RGB values before their ranges
     // are normalized to eight bits.
     private const val kMaxChannelValue = 262143
-
+    //  private static final Logger LOGGER = new Logger();
     /**
      * Utility method to compute the allocated size in bytes of a YUV420SP image of the given
      * dimensions.
@@ -29,7 +47,6 @@ object ImageUtils {
         val uvSize = (width + 1) / 2 * ((height + 1) / 2) * 2
         return ySize + uvSize
     }
-
     /**
      * Saves a Bitmap object to disk for analysis.
      *
@@ -42,28 +59,53 @@ object ImageUtils {
      * @param bitmap The bitmap to save.
      */
     @JvmOverloads
-    fun saveBitmap(bitmap: Bitmap, filename: String = "preview.png") {
-        val root =
-            Environment.getExternalStorageDirectory().absolutePath + File.separator + "tensorflow"
-        Log.d("BANANAPIE", "Saving ${bitmap.width}x${bitmap.height} bitmap to ${root}.")
-        val myDir = File(root)
-        if (!myDir.mkdirs()) {
-            Log.d("BANANAPIE","Make dir failed")
-        }
-        val file = File(myDir, filename)
-        if (file.exists()) {
-            file.delete()
-        }
-        try {
-            val out = FileOutputStream(file)
-            bitmap.compress(Bitmap.CompressFormat.PNG, 99, out)
-            out.flush()
-            out.close()
-        } catch (e: Exception) {
-            Log.d("BANANAPIE","Exception! $e")
-        }
-    }
+    fun saveBitmap(bitmap: Bitmap, filename: String = "preview", context: Context): Boolean {
+//        val root = context.getExternalFilesDir("tensorflow")
+//            Log.d("BANANAPIE","Saving ${bitmap.width}x${bitmap.height} bitmap to $root.");
+//        if (root != null) {
+//            if (!root.mkdirs()) {
+//                Log.d("BANANAPIE", "Make dir failed");
+//            }
+//        }
+//        val file = File(root, filename)
+//        if (file.exists()) {
+//            file.delete()
+//            Log.d("BANANAPIE", "deleted file ${file.path}");
+//        }
+//        try {
+//            val out = FileOutputStream(file)
+//            bitmap.compress(Bitmap.CompressFormat.PNG, 99, out)
+//            out.flush()
+//            out.close()
+//        } catch (e: Exception) {
+//            Log.e("BANANAPIE", "File saving Exception!" + e.printStackTrace());
+//        }
+        val imgCollection = sdk29andUp {
+            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        } ?: MediaStore.Images.Media.EXTERNAL_CONTENT_URI
 
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "$filename.jpg")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            put(MediaStore.Images.Media.WIDTH, bitmap.width)
+            put(MediaStore.Images.Media.HEIGHT, bitmap.height)
+        }
+
+        return try {
+            context.contentResolver.insert(imgCollection, contentValues)?.also{uri ->
+                context.contentResolver.openOutputStream(uri).use { outputStream ->
+                    if(!bitmap.compress(Bitmap.CompressFormat.JPEG, 95, outputStream)){
+                        throw IOException("couldn't save bitmap")
+                    }
+                }
+            } ?: throw IOException("couldn't create mediastore entry")
+            true
+        }catch (e: IOException) {
+            Log.e("BANANAPIE", "File saving Exception!" + e.printStackTrace())
+            false
+        }
+
+    }
 
     fun convertYUV420SPToARGB8888(input: ByteArray, width: Int, height: Int, output: IntArray) {
         val frameSize = width * height
@@ -164,7 +206,7 @@ object ImageUtils {
         val matrix = Matrix()
         if (applyRotation != 0) {
             if (applyRotation % 90 != 0) {
-                Log.d("BANANAPIE","Rotation of $applyRotation % 90 != 0")
+//        LOGGER.w("Rotation of %d % 90 != 0", applyRotation);
             }
 
             // Translate so center of image is at origin.
@@ -176,7 +218,7 @@ object ImageUtils {
 
         // Account for the already applied rotation, if any, and then determine how
         // much scaling is needed for each axis.
-        val transpose = (abs(applyRotation) + 90) % 180 == 0
+        val transpose = (Math.abs(applyRotation) + 90) % 180 == 0
         val inWidth = if (transpose) srcHeight else srcWidth
         val inHeight = if (transpose) srcWidth else srcHeight
 
@@ -187,7 +229,7 @@ object ImageUtils {
             if (maintainAspectRatio) {
                 // Scale by minimum factor so that dst is filled completely while
                 // maintaining the aspect ratio. Some image may fall off the edge.
-                val scaleFactor = scaleFactorX.coerceAtLeast(scaleFactorY)
+                val scaleFactor = Math.max(scaleFactorX, scaleFactorY)
                 matrix.postScale(scaleFactor, scaleFactor)
             } else {
                 // Scale exactly to fill dst from src.

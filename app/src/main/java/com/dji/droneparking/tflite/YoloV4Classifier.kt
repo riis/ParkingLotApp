@@ -9,7 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-package com.dji.droneparking.model
+package com.dji.droneparking.tflite
 
 import android.content.res.AssetManager
 import android.graphics.Bitmap
@@ -17,13 +17,12 @@ import android.graphics.RectF
 import android.os.Build
 import android.util.Log
 import com.dji.droneparking.FlightPlanActivityViewModel
+import com.dji.droneparking.environment.Utils
 import org.tensorflow.lite.Interpreter
-import com.dji.droneparking.model.Classifier.*
+import com.dji.droneparking.tflite.Classifier.*
 import org.tensorflow.lite.gpu.GpuDelegate
 import org.tensorflow.lite.nnapi.NnApiDelegate
-import java.io.BufferedReader
 import java.io.IOException
-import java.io.InputStreamReader
 import java.lang.Exception
 import java.lang.RuntimeException
 import java.nio.ByteBuffer
@@ -42,33 +41,6 @@ import java.util.*
  * - https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/running_on_mobile_tensorflowlite.md#running-our-model-on-android
  */
 open class YoloV4Classifier private constructor() : Classifier {
-    var processing = false
-
-    override fun recognizeImage(bitmap: Bitmap?): List<Recognition> {
-        processing = true
-        val scalarX = bitmap!!.width / 416.0f
-        val scalarY = bitmap.height / 416.0f
-        val byteBuffer = convertBitmapToByteBuffer(bitmap)
-
-        val detections: ArrayList<Recognition> = if (isTiny) {
-            getDetectionsForTiny(byteBuffer, bitmap)
-        } else {
-            getDetectionsForFull(byteBuffer, bitmap)
-        }
-        val recognitions = nms(detections)
-        processing = false
-
-        for (element in recognitions) {
-            val bottom = element.getLocation().bottom * scalarY
-            val top = element.getLocation().top * scalarY
-            val left = element.getLocation().left * scalarX
-            val right = element.getLocation().right * scalarX
-            val tempRect = RectF(left, top, right, bottom)
-            element.setLocation(tempRect)
-        }
-
-        return recognitions
-    }
 
     override fun enableStatLogging(debug: Boolean) {}
     override val statString: String
@@ -162,13 +134,20 @@ open class YoloV4Classifier private constructor() : Classifier {
     /**
      * Writes Image data into a `ByteBuffer`.
      */
-    private fun convertBitmapToByteBuffer(bitmap_main: Bitmap): ByteBuffer {
-        val bitmap = Bitmap.createScaledBitmap(bitmap_main, INPUT_SIZE, INPUT_SIZE, false)
+    private fun convertBitmapToByteBuffer(bitmap: Bitmap): ByteBuffer {
         val byteBuffer =
             ByteBuffer.allocateDirect(4 * BATCH_SIZE * INPUT_SIZE * INPUT_SIZE * PIXEL_SIZE)
         byteBuffer.order(ByteOrder.nativeOrder())
         val intValues = IntArray(INPUT_SIZE * INPUT_SIZE)
-        bitmap.getPixels(intValues, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        bitmap.getPixels(
+            intValues,
+            0,
+            bitmap.width,
+            0,
+            0,
+            bitmap.width,
+            bitmap.height
+        )
         var pixel = 0
         for (i in 0 until INPUT_SIZE) {
             for (j in 0 until INPUT_SIZE) {
@@ -256,7 +235,7 @@ open class YoloV4Classifier private constructor() : Classifier {
     ): ArrayList<Recognition> {
         val detections = ArrayList<Recognition>()
         val outputMap: MutableMap<Int, Any> = HashMap()
-        Log.i("labelSize", Integer.toString(labels.size))
+        Log.i("BANANAPIE", labels.size.toString())
         outputMap[0] = Array(1) {
             Array(OUTPUT_WIDTH_TINY[0]) {
                 FloatArray(
@@ -315,6 +294,16 @@ open class YoloV4Classifier private constructor() : Classifier {
             }
         }
         return detections
+    }
+
+    override fun recognizeImage(bitmap: Bitmap?): List<Recognition> {
+        val byteBuffer = convertBitmapToByteBuffer(bitmap!!)
+        val detections: ArrayList<Recognition> = if (isTiny) {
+            getDetectionsForTiny(byteBuffer, bitmap)
+        } else {
+            getDetectionsForFull(byteBuffer, bitmap)
+        }
+        return nms(detections)
     }
 
     fun checkInvalidateBox(

@@ -2,10 +2,13 @@ package com.dji.droneparking
 
 import android.content.Context
 import android.graphics.Bitmap
-import androidx.lifecycle.MutableLiveData
+import android.graphics.Matrix
+import android.util.Size
 import androidx.lifecycle.ViewModel
-import com.dji.droneparking.model.Classifier
-import com.dji.droneparking.tracker.MultiBoxTracker
+import com.dji.droneparking.environment.BorderedText
+import com.dji.droneparking.environment.ImageUtils
+import com.dji.droneparking.tflite.Classifier
+import com.dji.droneparking.tracking.MultiBoxTracker
 import com.dji.droneparking.util.MavicMiniMissionOperator
 import com.dji.droneparking.util.WaypointMissionManager
 import com.mapbox.mapboxsdk.geometry.LatLng
@@ -21,17 +24,36 @@ import org.tensorflow.lite.task.vision.detector.ObjectDetector
 import java.util.*
 
 class FlightPlanActivityViewModel : ViewModel() {
+    var sensorOrientation: Int = 0
+    var previewHeight: Int = 0
+    var previewWidth: Int = 0
+    var rgbBytes = IntArray(previewWidth * previewHeight)
+
+    var rgbFrameBitmap: Bitmap? = null
+    var croppedBitmap: Bitmap? = null
+    var cropCopyBitmap: Bitmap? = null
+    var frameToCropTransform: Matrix? = null
+    var cropToFrameTransform: Matrix? = null
+
     var frameCounter = 0
     lateinit var detector: Classifier
     var options: ObjectDetector.ObjectDetectorOptions? = null
     var bitmap: Bitmap? = null
-    var boxTracker: MultiBoxTracker? = null
+    var tracker: MultiBoxTracker? = null
+    var borderedText: BorderedText? = null
 
-    val MINIMUM_CONFIDENCE_TF_OD_API = 0.5f
+
     val TF_OD_API_INPUT_SIZE = 416
     val TF_OD_API_IS_QUANTIZED = false
     val TF_OD_API_MODEL_FILE = "model.tflite"
     val TF_OD_API_LABELS_FILE = "file:///android_asset/coco.txt"
+
+//    val MODE: DetectorMode = TF_OD_API
+    val MINIMUM_CONFIDENCE_TF_OD_API = 0.5f
+    val MAINTAIN_ASPECT = false
+    val DESIRED_PREVIEW_SIZE = Size(640, 480)
+    val SAVE_PREVIEW_BITMAP = true
+    val TEXT_SIZE_DIP = 10f
 
 
 
