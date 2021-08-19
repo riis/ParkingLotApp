@@ -23,6 +23,10 @@ import com.dji.droneparking.R
 import com.dji.droneparking.dialog.LoadingDialog
 import com.dji.droneparking.util.*
 import com.dji.droneparking.util.Tools.showToast
+import com.google.mlkit.common.model.LocalModel
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.objects.ObjectDetection
+import com.google.mlkit.vision.objects.custom.CustomObjectDetectorOptions
 import com.mapbox.mapboxsdk.Mapbox
 import com.mapbox.mapboxsdk.camera.CameraPosition
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
@@ -687,21 +691,39 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
      */
     private fun runObjectDetection(bitmap: Bitmap) {
         // Step 1: create TFLite's TensorImage object
-        val image = TensorImage.fromBitmap(bitmap)
+        val image = InputImage.fromBitmap(bitmap, 0)
 
         // Step 2: Initialize the detector object
-        val options = ObjectDetector.ObjectDetectorOptions.builder()
-            .setMaxResults(5)
-            .setScoreThreshold(0.5f)
+        val localModel = LocalModel.Builder()
+            .setAssetFilePath("model.tflite")
             .build()
-        val detector = ObjectDetector.createFromFileAndOptions(
-            this, // the application context
-            "model.tflite", // must be same as the filename in assets folder
-            options
-        )
+
+        val customObjectDetectorOptions =
+            CustomObjectDetectorOptions.Builder(localModel)
+                .setDetectorMode(CustomObjectDetectorOptions.STREAM_MODE)
+                .setClassificationConfidenceThreshold(0.5f)
+                .setMaxPerObjectLabelCount(1)
+                .build()
+
+        val detector =
+            ObjectDetection.getClient(customObjectDetectorOptions)
 
         // Step 3: feed given image to the model and print the detection result
-        val results = detector.detect(image)
+        detector
+            .process(image)
+            .addOnFailureListener {}
+            .addOnSuccessListener { results ->
+                val resultToDisplay = results.map{
+                    for(detectedObject in results){
+                        val boundingBox = detectedObject.boundingBox
+                        for (label in detectedObject.labels) {
+                            val text = label.text
+                            val index = label.index
+                            val confidence = label.confidence
+                        }
+                    }
+                }
+            }
 
         // Step 4: Parse the detection result and show it
 //        debugPrint(results)

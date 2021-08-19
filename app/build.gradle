@@ -17,7 +17,9 @@ android {
     buildToolsVersion "30.0.3"
     useLibrary 'org.apache.http.legacy'
     sourceSets.main.res.filter.exclude '**/DJIImageDownloader.kt'
-
+    aaptOptions {
+        noCompress "tflite"
+    }
     defaultConfig {
         applicationId 'com.riis.livestream'
         minSdkVersion 22
@@ -142,4 +144,5 @@ dependencies {
 
     implementation 'org.tensorflow:tensorflow-lite-task-vision:0.2.0'
     implementation 'org.tensorflow:tensorflow-lite:2.4.0'
+    implementation 'com.google.mlkit:object-detection-custom:16.3.3'
 }
