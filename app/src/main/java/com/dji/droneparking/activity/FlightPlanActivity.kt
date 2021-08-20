@@ -20,6 +20,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import com.dji.droneparking.viewmodel.FlightPlanActivityViewModel
 import com.dji.droneparking.R
+import com.dji.droneparking.dialog.DownloadDialog
 import com.dji.droneparking.dialog.LoadingDialog
 import com.dji.droneparking.util.*
 import com.dji.droneparking.util.Tools.showToast
@@ -70,7 +71,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var videoSurface: TextureView
     private lateinit var videoView: CardView
 
-    private lateinit var mLoadingDialog: LoadingDialog
+    private lateinit var mLoadingDialog: DownloadDialog
 
     private var currentDeleteIndex = 0
     private var numOfOldPhotos = 0
@@ -319,6 +320,18 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                                     "BANANAPIE",
                                     "successfully deleted file $currentDeleteIndex/$numOfOldPhotos"
                                 )
+                                runOnUiThread {
+                                    mLoadingDialog.setText("Deleted image $currentDeleteIndex/$numOfOldPhotos")
+                                }
+                                val tmpProgress = (1.0 * currentDeleteIndex / numOfOldPhotos * 100).toInt()
+                                mLoadingDialog.setProgress(tmpProgress)
+                                if (tmpProgress == 100){
+                                    val tempHandler = Handler(Looper.getMainLooper())
+                                    tempHandler.postDelayed({
+                                        Log.d("BANANAPIE", "last 2 sec")
+                                    }, 2000)
+                                }
+
 
                             }
 
@@ -443,7 +456,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
     private fun initUI() {
 
-        mLoadingDialog = LoadingDialog("Clearing SD card...")
+        mLoadingDialog = DownloadDialog("Clearing SD card...")
         mLoadingDialog.isCancelable = false
 
         startFlightBtn = findViewById(R.id.start_flight_button)
