@@ -58,6 +58,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
     private val viewModel: FlightPlanActivityViewModel by viewModels()
 
+    private var mapTouch: Boolean = false
 
     private lateinit var cancelFlightBtn: Button
     private lateinit var overlayView: LinearLayout
@@ -174,19 +175,22 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
     override fun onMapClick(point: LatLng): Boolean {
 
-        val symbol = viewModel.symbolManager.create(
-            SymbolOptions()
-                .withLatLng(LatLng(point))
-                .withIconImage("ic_waypoint_marker_unvisited")
-                .withIconHaloWidth(2.0f)
-                .withDraggable(true)
-        )
+        if (mapTouch){
+            val symbol = viewModel.symbolManager.create(
+                SymbolOptions()
+                    .withLatLng(LatLng(point))
+                    .withIconImage("ic_waypoint_marker_unvisited")
+                    .withIconHaloWidth(2.0f)
+                    .withDraggable(true)
+            )
+            //      Add new point to the list
+            configureFlightPlan(symbol)
+            return true
+        }
+        else{
+            return false
+        }
 
-
-        //      Add new point to the list
-        configureFlightPlan(symbol)
-
-        return true
     }
 
     override fun onClick(v: View?) {
@@ -226,6 +230,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                         )
 
                         viewModel.manager?.startMission()
+                        mapTouch = false
                         layoutConfirmPlan.visibility = View.GONE
                         layoutCancelPlan.visibility = View.VISIBLE
                     }
@@ -285,6 +290,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     private fun showClearMemoryDialog() {
         val dialog = AlertDialog.Builder(this)
             .setMessage(R.string.ensure_clear_sd)
+            .setCancelable(false)
             .setTitle(R.string.title_clear_sd)
             .setNegativeButton(R.string.no, null)
             .setPositiveButton(R.string.yes) { _, _ ->
@@ -375,6 +381,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                             if (mediaFileList.isEmpty()) {
                                 Log.d("BANANAPIE", "SD card is empty, there's nothing to clear")
                                 mLoadingDialog.dismiss()
+                                mapTouch = true
                             } else {
                                 deleteOneFileFromList()
                             }
@@ -421,6 +428,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                             else{
                                 Log.d("BANANAPIE", "SD card is empty, there's nothing to clear")
                                 mLoadingDialog.dismiss()
+                                mapTouch = true
                             }
 
                         } else {
@@ -428,6 +436,8 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                                 "BANANAPIE",
                                 "could not obtain media data from SD card (FlightPlanActivity)"
                             )
+                            showToast(this, "could not obtain media data from SD card")
+                            mapTouch = true
                         }
                     }
                 }
