@@ -24,6 +24,7 @@ import org.tensorflow.lite.task.vision.detector.ObjectDetector
 import java.util.*
 
 class FlightPlanActivityViewModel : ViewModel() {
+    var lastProcessingTimeMs: Long = 0
     var sensorOrientation: Int = 0
     var previewHeight: Int = 0
     var previewWidth: Int = 0
@@ -52,7 +53,7 @@ class FlightPlanActivityViewModel : ViewModel() {
     val MINIMUM_CONFIDENCE_TF_OD_API = 0.5f
     val MAINTAIN_ASPECT = false
     val DESIRED_PREVIEW_SIZE = Size(640, 480)
-    val SAVE_PREVIEW_BITMAP = true
+    val SAVE_PREVIEW_BITMAP = false
     val TEXT_SIZE_DIP = 10f
 
 

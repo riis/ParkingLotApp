@@ -20,9 +20,12 @@ import android.content.Context
 import kotlin.jvm.JvmOverloads
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import android.os.Build
+import android.os.Environment
 import android.provider.MediaStore
 import android.provider.SyncStateContract.Helpers.insert
 import android.util.Log
+import androidx.annotation.RequiresApi
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -58,49 +61,39 @@ object ImageUtils {
      *
      * @param bitmap The bitmap to save.
      */
+    @RequiresApi(Build.VERSION_CODES.Q)
     @JvmOverloads
     fun saveBitmap(bitmap: Bitmap, filename: String = "preview", context: Context): Boolean {
-//        val root = context.getExternalFilesDir("tensorflow")
-//            Log.d("BANANAPIE","Saving ${bitmap.width}x${bitmap.height} bitmap to $root.");
-//        if (root != null) {
-//            if (!root.mkdirs()) {
-//                Log.d("BANANAPIE", "Make dir failed");
-//            }
-//        }
-//        val file = File(root, filename)
-//        if (file.exists()) {
-//            file.delete()
-//            Log.d("BANANAPIE", "deleted file ${file.path}");
-//        }
-//        try {
-//            val out = FileOutputStream(file)
-//            bitmap.compress(Bitmap.CompressFormat.PNG, 99, out)
-//            out.flush()
-//            out.close()
-//        } catch (e: Exception) {
-//            Log.e("BANANAPIE", "File saving Exception!" + e.printStackTrace());
-//        }
         val imgCollection = sdk29andUp {
             MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         } ?: MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+
+        val numDeleted = context.contentResolver.delete(
+            imgCollection, null, null
+        )
+        Log.d("BANANAPIE", "deleted $numDeleted rows");
 
         val contentValues = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "$filename.jpg")
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
             put(MediaStore.Images.Media.WIDTH, bitmap.width)
             put(MediaStore.Images.Media.HEIGHT, bitmap.height)
+            put(
+                MediaStore.Images.Media.RELATIVE_PATH,
+                Environment.DIRECTORY_PICTURES + File.separator + "DroneParking"
+            )
         }
 
         return try {
-            context.contentResolver.insert(imgCollection, contentValues)?.also{uri ->
+            context.contentResolver.insert(imgCollection, contentValues)?.also { uri ->
                 context.contentResolver.openOutputStream(uri).use { outputStream ->
-                    if(!bitmap.compress(Bitmap.CompressFormat.JPEG, 95, outputStream)){
+                    if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 95, outputStream)) {
                         throw IOException("couldn't save bitmap")
                     }
                 }
             } ?: throw IOException("couldn't create mediastore entry")
             true
-        }catch (e: IOException) {
+        } catch (e: IOException) {
             Log.e("BANANAPIE", "File saving Exception!" + e.printStackTrace())
             false
         }

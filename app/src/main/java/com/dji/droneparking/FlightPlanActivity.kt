@@ -15,6 +15,7 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
+import androidx.lifecycle.lifecycleScope
 import com.dji.droneparking.customview.OverlayView
 import com.dji.droneparking.environment.BorderedText
 import com.dji.droneparking.environment.ImageUtils
@@ -49,7 +50,6 @@ import dji.sdk.media.MediaManager
 import dji.sdk.products.Aircraft
 import dji.ux.widget.TakeOffWidget
 import kotlinx.coroutines.*
-import org.tensorflow.lite.task.vision.detector.Detection
 import java.io.IOException
 
 import java.util.*
@@ -826,6 +826,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
      * runObjectDetection(bitmap: Bitmap)
      *      TFLite Object Detection function
      */
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun runObjectDetection(bitmap: Bitmap) {
         //invalidate the overlay so that it is immediately ready to be drawn on
         trackingOverlay.postInvalidate()
@@ -850,138 +851,46 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         // For examining the actual TF input.
         if (vM.SAVE_PREVIEW_BITMAP) {
-            vM.croppedBitmap?.let { ImageUtils.saveBitmap(it, "bitsh", applicationContext) }
+            vM.croppedBitmap?.let { ImageUtils.saveBitmap(it, "photo", applicationContext) }
         }
-//
-//        runInBackground(
-//            Runnable {
-////                org.tensorflow.lite.examples.detection.DetectorActivity.LOGGER.i("Running detection on image $currTimestamp")
-//                val startTime = SystemClock.uptimeMillis()
-//                val results: List<Classifier.Recognition> = vM.detector.recognizeImage(vM.croppedBitmap)
-//                lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime
-//                Log.e("CHECK", "run: " + results.size)
-//                cropCopyBitmap = Bitmap.createBitmap(croppedBitmap)
-//                val canvas = Canvas(cropCopyBitmap)
-//                val paint = Paint()
-//                paint.color = Color.RED
-//                paint.style = Paint.Style.STROKE
-//                paint.strokeWidth = 2.0f
-//                var minimumConfidence: Float =
-//                    org.tensorflow.lite.examples.detection.DetectorActivity.MINIMUM_CONFIDENCE_TF_OD_API
-//                when (org.tensorflow.lite.examples.detection.DetectorActivity.MODE) {
-//                    org.tensorflow.lite.examples.detection.DetectorActivity.DetectorMode.TF_OD_API -> minimumConfidence =
-//                        org.tensorflow.lite.examples.detection.DetectorActivity.MINIMUM_CONFIDENCE_TF_OD_API
-//                }
-//                val mappedRecognitions: MutableList<Classifier.Recognition> = LinkedList<Classifier.Recognition>()
-//                for (result in results) {
-//                    val location: RectF = result.getLocation()
-//                    if (result.getConfidence() >= minimumConfidence) {
-//                        canvas.drawRect(location, paint)
-//                        cropToFrameTransform.mapRect(location)
-//                        result.setLocation(location)
-//                        mappedRecognitions.add(result)
-//                    }
-//                }
-//                tracker.trackResults(mappedRecognitions, currTimestamp)
-//                trackingOverlay.postInvalidate()
-//                computingDetection = false
-//                runOnUiThread {
-//                    showFrameInfo(previewWidth.toString() + "x" + previewHeight)
-//                    showCropInfo(
-//                        cropCopyBitmap.getWidth().toString() + "x" + cropCopyBitmap.getHeight()
-//                    )
-//                    showInference(lastProcessingTimeMs.toString() + "ms")
-//                }
-//            })
+
+        lifecycleScope.launch(Dispatchers.Main){
+            val startTime = SystemClock.uptimeMillis()
+            val results: List<Classifier.Recognition> = vM.detector.recognizeImage(vM.croppedBitmap)
+            Log.e("BANANAPIE", "run: " + results.size)
+            vM.lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime
+            vM.cropCopyBitmap = vM.croppedBitmap?.let { Bitmap.createBitmap(it) }
+            val paint = Paint()
+            paint.color = Color.RED
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 2.0f
+
+            var minimumConfidence: Float = vM.MINIMUM_CONFIDENCE_TF_OD_API
+
+            val mappedRecognitions: MutableList<Classifier.Recognition> = LinkedList<Classifier.Recognition>()
+            for (result in results) {
+                val location: RectF = result.getLocation()
+                if (result.confidence!! >= minimumConfidence) {
+                    vM.cropCopyBitmap?.let { Canvas(it) }?.drawRect(location, paint)
+                    vM.cropToFrameTransform?.mapRect(location)
+                    result.setLocation(location)
+                    mappedRecognitions.add(result)
+                }
+            }
+            vM.tracker?.trackResults(mappedRecognitions, results.size.toLong())
+            trackingOverlay.postInvalidate()
+            Log.d("BANANAPIE", "${vM.lastProcessingTimeMs} ms")
+            vM.cropCopyBitmap?.let { ImageUtils.saveBitmap(it, "photo", applicationContext) }
+//            computingDetection = false
+//            runOnUiThread {
+//                showFrameInfo(previewWidth.toString() + "x" + previewHeight)
+//                showCropInfo(
+//                    cropCopyBitmap.getWidth().toString() + "x" + cropCopyBitmap.getHeight()
+//                )
+//                showInference(lastProcessingTimeMs.toString() + "ms")
+//            }
+        }
 
     }
-
-//    private fun handleResult(bitmap: Bitmap, results: List<Classifier.Recognition>): Bitmap {
-//        val canvas = Canvas(bitmap)
-//        val paint = Paint()
-//        paint.color = Color.RED
-//        paint.style = Paint.Style.STROKE
-//        paint.strokeWidth = 2.0f
-//        val mappedRecognitions: List<Classifier.Recognition> = LinkedList<Classifier.Recognition>()
-//        for (result in results) {
-//            val location: RectF = result.getLocation()
-//            if (result.confidence!! >= vM.MINIMUM_CONFIDENCE_TF_OD_API) {
-//                canvas.drawRect(location, paint)
-//                Log.d("BANANAPIE", location.toString())
-//            }
-//        }
-//        return bitmap
-//    }
-
-//    private fun drawDetectionResult(
-//        bitmap: Bitmap,
-//        detectionResults: List<DetectionResult>
-//    ): Bitmap {
-//        val outputBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-//        val canvas = Canvas(outputBitmap)
-//        val pen = Paint()
-//        pen.textAlign = Paint.Align.LEFT
-//
-//        detectionResults.forEach {
-//            // draw bounding box
-//            pen.color = Color.RED
-//            pen.strokeWidth = 8F
-//            pen.style = Paint.Style.STROKE
-//            val box = it.boundingBox
-//            canvas.drawRect(box, pen)
-//
-//
-//            val tagSize = Rect(0, 0, 0, 0)
-//
-//            // calculate the right font size
-//            pen.style = Paint.Style.FILL_AND_STROKE
-//            pen.color = Color.YELLOW
-//            pen.strokeWidth = 2F
-//
-//            pen.textSize = 96F
-//            pen.getTextBounds(it.text, 0, it.text.length, tagSize)
-//            val fontSize: Float = pen.textSize * box.width() / tagSize.width()
-//
-//            // adjust the font size so texts are inside the bounding box
-//            if (fontSize < pen.textSize) pen.textSize = fontSize
-//
-//            var margin = (box.width() - tagSize.width()) / 2.0F
-//            if (margin < 0F) margin = 0F
-//            canvas.drawText(
-//                it.text, box.left + margin,
-//                box.top + tagSize.height().times(1F), pen
-//            )
-//        }
-//        return outputBitmap
-//    }
-//
-//    /**
-//     * DetectionResult
-//     *      A class to store the visualization info of a detected object.
-//     */
-//    data class DetectionResult(val boundingBox: RectF, val text: String)
-
-
-//    private fun debugPrint(results: List<Detection>) {
-//        Log.d(
-//            "BANANAPIE",
-//            "--------------------------------------------------------------------------"
-//        )
-//        for ((i, obj) in results.withIndex()) {
-//            val box = obj.boundingBox
-//
-//            Log.d("BANANAPIE", "Detected object: ${i} ")
-//            Log.d(
-//                "BANANAPIE",
-//                "  boundingBox: (${box.left}, ${box.top}) - (${box.right},${box.bottom})"
-//            )
-//
-//            for ((j, category) in obj.categories.withIndex()) {
-//                Log.d("BANANAPIE", "    Label $j: ${category.label}")
-//                val confidence: Int = category.score.times(100).toInt()
-//                Log.d("BANANAPIE", "    Confidence: ${confidence}%")
-//            }
-//        }
-//    }
 
 }
