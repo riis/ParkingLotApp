@@ -139,7 +139,7 @@ public class YoloV4Classifier implements Classifier {
 
     @Override
     public float getObjThresh() {
-        return 0.4f;
+        return 0.5f;
     }
 
 //    private static final Logger LOGGER = new Logger();

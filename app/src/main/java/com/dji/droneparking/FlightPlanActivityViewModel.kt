@@ -27,17 +27,11 @@ class FlightPlanActivityViewModel : ViewModel() {
     var sensorOrientation: Int = 0
     var previewHeight: Int = 0
     var previewWidth: Int = 0
-    var rgbBytes = IntArray(previewWidth * previewHeight)
 
-    var rgbFrameBitmap: Bitmap? = null
     var croppedBitmap: Bitmap? = null
-    var cropCopyBitmap: Bitmap? = null
-    var frameToCropTransform: Matrix? = null
     var cropToFrameTransform: Matrix? = null
 
-    var frameCounter = 0
     lateinit var detector: Classifier
-    var options: ObjectDetector.ObjectDetectorOptions? = null
     var bitmap: Bitmap? = null
     var tracker: MultiBoxTracker? = null
     var borderedText: BorderedText? = null
@@ -50,7 +44,7 @@ class FlightPlanActivityViewModel : ViewModel() {
 
 //    val MODE: DetectorMode = TF_OD_API
     val MINIMUM_CONFIDENCE_TF_OD_API = 0.5f
-    val MAINTAIN_ASPECT = true
+    val MAINTAIN_ASPECT = false
     val DESIRED_PREVIEW_SIZE = Size(640, 480)
     val SAVE_PREVIEW_BITMAP = false
     val TEXT_SIZE_DIP = 6f

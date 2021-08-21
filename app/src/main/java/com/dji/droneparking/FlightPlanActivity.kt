@@ -53,6 +53,7 @@ import java.util.*
 import android.graphics.BitmapFactory
 
 import android.graphics.Bitmap
+import com.dji.droneparking.environment.Utils
 import com.dji.droneparking.tflite.Classifier
 import com.dji.droneparking.tflite.YoloV4Classifier
 
@@ -759,32 +760,21 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             finish()
         }
 
-
-
         vM.previewWidth = width
         vM.previewHeight = height
         Log.d("BANANAPIE", "RGB FRAME BITMAP DIMENSIONS: ${vM.previewWidth} x ${vM.previewHeight}")
 
         vM.sensorOrientation = 0
-
-//        vM.rgbFrameBitmap = Bitmap.createBitmap(
-//            vM.previewWidth,
-//            vM.previewHeight,
-//            Bitmap.Config.ARGB_8888
-//        )
         vM.croppedBitmap = Bitmap.createBitmap(cropSize, cropSize, Bitmap.Config.ARGB_8888)
 
-        vM.frameToCropTransform = ImageUtils.getTransformationMatrix(
+        vM.cropToFrameTransform = ImageUtils.getTransformationMatrix(
+            cropSize,
+            cropSize,
             vM.previewWidth,
             vM.previewHeight,
-            cropSize,
-            cropSize,
             vM.sensorOrientation,
             vM.MAINTAIN_ASPECT
         )
-
-        vM.cropToFrameTransform = Matrix()
-        vM.frameToCropTransform!!.invert(vM.cropToFrameTransform)
 
         trackingOverlay = findViewById(R.id.tracking_overlay)
         trackingOverlay.addCallback(
@@ -793,9 +783,6 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                     if (canvas != null) {
                         vM.tracker!!.draw(canvas)
                     }
-//                    if (isDebug()) {
-//                        vM.tracker.drawDebug(canvas)
-//                    }
                 }
             })
 
@@ -804,6 +791,12 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             vM.previewHeight,
             vM.sensorOrientation
         )
+
+//        lifecycleScope.launch(Dispatchers.Default){
+//            while (true){
+//                Log.
+//            }
+//        }
     }
 
     //When a SurfaceTexture is updated
@@ -831,29 +824,20 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
      *      TFLite Object Detection function
      */
     @RequiresApi(Build.VERSION_CODES.Q)
-    private fun runObjectDetection(bmp: Bitmap) {
+    private fun runObjectDetection(bitmap: Bitmap) {//change this to bmp to run the code below
 
-        var bitmap = getBitmapFromAsset(applicationContext, "bmp.jpg")
-        bitmap = bitmap?.let { Bitmap.createScaledBitmap(it, vM.previewWidth, vM.previewHeight, false) }
-
+//        var bitmap = Utils.getBitmapFromAsset(applicationContext, "bmp.jpg")
         //invalidate the overlay so that it is immediately ready to be drawn on
         trackingOverlay.postInvalidate()
 
-        val canvas = vM.croppedBitmap?.let { Canvas(it) }
-
-        bitmap.let { vM.frameToCropTransform?.let { it1 ->
-            if (it != null) {
-                canvas?.drawBitmap(it,
-                    it1, null)
-            }
-        } }
+        vM.croppedBitmap = Bitmap.createScaledBitmap(bitmap, 416, 416, false)
 
         // For examining the actual TF input.
         if (vM.SAVE_PREVIEW_BITMAP) {
             vM.croppedBitmap?.let { ImageUtils.saveBitmap(it, "photo", applicationContext) }
         }
 
-        lifecycleScope.launch(Dispatchers.Main){
+        lifecycleScope.launch(Dispatchers.Main) {
             val startTime = SystemClock.uptimeMillis()
             val results: List<Classifier.Recognition> = vM.detector.recognizeImage(vM.croppedBitmap)
             Log.e("BANANAPIE", "run: " + results.size)
@@ -864,13 +848,16 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = 2.0f
 
+            val canvas =  Canvas(bitmap)
+
             val minimumConfidence: Float = vM.MINIMUM_CONFIDENCE_TF_OD_API
 
-            val mappedRecognitions: MutableList<Classifier.Recognition> = LinkedList<Classifier.Recognition>()
+            val mappedRecognitions: MutableList<Classifier.Recognition> =
+                LinkedList<Classifier.Recognition>()
             for (result in results) {
                 val location: RectF = result.location
                 if (result.confidence!! >= minimumConfidence) {
-                    canvas?.drawRect(location, paint)
+                    canvas.drawRect(location, paint)
                     vM.cropToFrameTransform?.mapRect(location)
                     result.location = location
                     mappedRecognitions.add(result)
@@ -881,18 +868,6 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             Log.d("BANANAPIE", "${vM.lastProcessingTimeMs} ms")
         }
 
-    }
-    fun getBitmapFromAsset(context: Context, filePath: String?): Bitmap? {
-        val assetManager = context.assets
-        val istr: InputStream
-        var bitmap: Bitmap? = null
-        try {
-            istr = assetManager.open(filePath!!)
-            bitmap = BitmapFactory.decodeStream(istr)
-        } catch (e: IOException) {
-            // handle exception
-        }
-        return bitmap
     }
 
 }
