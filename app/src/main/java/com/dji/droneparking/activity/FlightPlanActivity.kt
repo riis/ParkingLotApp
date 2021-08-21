@@ -4,9 +4,6 @@ package com.dji.droneparking.activity
 import android.content.Context
 import android.graphics.*
 import android.os.*
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.util.TypedValue
 import android.view.TextureView
@@ -19,22 +16,22 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import androidx.lifecycle.lifecycleScope
+import com.dji.droneparking.R
 import com.dji.droneparking.customview.OverlayView
+import com.dji.droneparking.dialog.DownloadDialog
 import com.dji.droneparking.environment.BorderedText
 import com.dji.droneparking.environment.ImageUtils
+import com.dji.droneparking.tflite.Classifier
+import com.dji.droneparking.tflite.YoloV4Classifier
 import com.dji.droneparking.tracking.MultiBoxTracker
-import com.dji.droneparking.viewmodel.FlightPlanActivityViewModel
-import com.dji.droneparking.R
-import com.dji.droneparking.dialog.DownloadDialog
-import com.dji.droneparking.dialog.LoadingDialog
 import com.dji.droneparking.util.*
 import com.dji.droneparking.util.Tools.showToast
+import com.dji.droneparking.viewmodel.FlightPlanActivityViewModel
 import com.mapbox.mapboxsdk.Mapbox
 import com.mapbox.mapboxsdk.camera.CameraPosition
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
 import com.mapbox.mapboxsdk.geometry.LatLng
 import com.mapbox.mapboxsdk.maps.*
-import com.mapbox.mapboxsdk.offline.OfflineManager
 import com.mapbox.mapboxsdk.plugins.annotation.*
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory
 import com.riis.cattlecounter.util.distanceToSegment
@@ -47,9 +44,6 @@ import dji.common.model.LocationCoordinate2D
 import dji.common.product.Model
 import dji.common.util.CommonCallbacks
 import dji.sdk.base.BaseProduct
-import dji.sdk.camera.Camera
-import dji.common.util.CommonCallbacks
-import dji.sdk.base.BaseProduct
 import dji.sdk.camera.VideoFeeder
 import dji.sdk.codec.DJICodecManager
 import dji.sdk.gimbal.Gimbal
@@ -59,18 +53,7 @@ import dji.sdk.products.Aircraft
 import dji.ux.widget.TakeOffWidget
 import kotlinx.coroutines.*
 import java.io.IOException
-import org.tensorflow.lite.support.image.TensorImage
-import org.tensorflow.lite.task.vision.detector.ObjectDetector
-import java.io.File
 import java.util.*
-import android.graphics.BitmapFactory
-
-import android.graphics.Bitmap
-import com.dji.droneparking.environment.Utils
-import com.dji.droneparking.tflite.Classifier
-import com.dji.droneparking.tflite.YoloV4Classifier
-
-import java.io.InputStream
 
 
 class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
@@ -102,7 +85,6 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     private var mMediaManager: MediaManager? = null //uninitialized media manager
     private var mediaFileList: MutableList<MediaFile> =
         mutableListOf() //empty list of MediaFile objects
-    private lateinit var detectorView: ImageView
     private lateinit var operator: MavicMiniMissionOperator
 
     private val symbolDragListener = object : OnSymbolDragListener {
@@ -660,7 +642,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                 FlightPlanner.createFlightPlan(
                     newPoints,
                     35.0f,
-                    viewModel.polygonCoordinates
+                    vM.polygonCoordinates
                 ) // get plan
 
             vM.flightPlanLine?.let { line -> // delete on plan on map and reset arrays

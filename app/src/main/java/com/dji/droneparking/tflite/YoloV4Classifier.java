@@ -18,7 +18,6 @@ import android.graphics.RectF;
 import android.os.Build;
 import android.util.Log;
 
-import com.dji.droneparking.FlightPlanActivityViewModel;
 import com.dji.droneparking.environment.Utils;
 
 import org.tensorflow.lite.Interpreter;
