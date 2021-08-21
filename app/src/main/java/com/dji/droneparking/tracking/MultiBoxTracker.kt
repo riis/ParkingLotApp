@@ -20,9 +20,9 @@ import android.text.TextUtils
 import android.util.Log
 import android.util.Pair
 import android.util.TypedValue
-import com.dji.droneparking.tflite.Classifier
 import com.dji.droneparking.environment.BorderedText
 import com.dji.droneparking.environment.ImageUtils
+import com.dji.droneparking.tflite.Classifier
 import java.util.*
 
 /** A tracker that handles non-max suppression and matches existing objects to new detections.  */
@@ -73,10 +73,10 @@ class MultiBoxTracker(context: Context) {
     @Synchronized
     fun draw(canvas: Canvas) {
         val rotated = sensorOrientation % 180 == 90
-        val multiplier = Math.min(
-            canvas.height / (if (rotated) frameWidth else frameHeight).toFloat(),
-            canvas.width / (if (rotated) frameHeight else frameWidth).toFloat()
-        )
+        val multiplier =
+            (canvas.height / (if (rotated) frameWidth else frameHeight).toFloat()).coerceAtMost(
+                canvas.width / (if (rotated) frameHeight else frameWidth).toFloat()
+            )
         frameToCanvasMatrix = ImageUtils.getTransformationMatrix(
             frameWidth,
             frameHeight,

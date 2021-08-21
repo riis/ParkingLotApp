@@ -71,7 +71,7 @@ object ImageUtils {
         val numDeleted = context.contentResolver.delete(
             imgCollection, null, null
         )
-        Log.d("BANANAPIE", "deleted $numDeleted rows");
+//        Log.d("BANANAPIE", "deleted $numDeleted rows");
 
         val contentValues = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "$filename.jpg")

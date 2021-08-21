@@ -6,7 +6,6 @@ import android.graphics.Matrix
 import android.util.Size
 import androidx.lifecycle.ViewModel
 import com.dji.droneparking.environment.BorderedText
-import com.dji.droneparking.environment.ImageUtils
 import com.dji.droneparking.tflite.Classifier
 import com.dji.droneparking.tracking.MultiBoxTracker
 import com.dji.droneparking.util.MavicMiniMissionOperator
@@ -45,16 +44,16 @@ class FlightPlanActivityViewModel : ViewModel() {
 
 
     val TF_OD_API_INPUT_SIZE = 416
-    val TF_OD_API_IS_QUANTIZED = false
+    val TF_OD_API_IS_QUANTIZED = true
     val TF_OD_API_MODEL_FILE = "model.tflite"
     val TF_OD_API_LABELS_FILE = "file:///android_asset/coco.txt"
 
 //    val MODE: DetectorMode = TF_OD_API
     val MINIMUM_CONFIDENCE_TF_OD_API = 0.5f
-    val MAINTAIN_ASPECT = false
+    val MAINTAIN_ASPECT = true
     val DESIRED_PREVIEW_SIZE = Size(640, 480)
     val SAVE_PREVIEW_BITMAP = false
-    val TEXT_SIZE_DIP = 10f
+    val TEXT_SIZE_DIP = 6f
 
 
 

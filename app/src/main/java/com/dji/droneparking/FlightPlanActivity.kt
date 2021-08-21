@@ -19,8 +19,6 @@ import androidx.lifecycle.lifecycleScope
 import com.dji.droneparking.customview.OverlayView
 import com.dji.droneparking.environment.BorderedText
 import com.dji.droneparking.environment.ImageUtils
-import com.dji.droneparking.tflite.Classifier
-import com.dji.droneparking.tflite.YoloV4Classifier
 import com.dji.droneparking.tracking.MultiBoxTracker
 import com.dji.droneparking.util.*
 import com.dji.droneparking.util.Tools.showToast
@@ -35,24 +33,31 @@ import com.riis.cattlecounter.util.distanceToSegment
 import dji.common.camera.SettingsDefinitions
 import dji.common.error.DJICameraError
 import dji.common.error.DJIError
+import dji.common.gimbal.*
 import dji.common.mission.waypoint.WaypointMission
 import dji.common.model.LocationCoordinate2D
 import dji.common.product.Model
-import dji.sdk.base.BaseProduct
-import dji.common.gimbal.*
 import dji.common.util.CommonCallbacks
-import dji.sdk.gimbal.Gimbal
+import dji.sdk.base.BaseProduct
 import dji.sdk.camera.Camera
 import dji.sdk.camera.VideoFeeder
 import dji.sdk.codec.DJICodecManager
+import dji.sdk.gimbal.Gimbal
 import dji.sdk.media.MediaFile
 import dji.sdk.media.MediaManager
 import dji.sdk.products.Aircraft
 import dji.ux.widget.TakeOffWidget
 import kotlinx.coroutines.*
 import java.io.IOException
-
 import java.util.*
+import android.graphics.BitmapFactory
+
+import android.graphics.Bitmap
+import com.dji.droneparking.tflite.Classifier
+import com.dji.droneparking.tflite.YoloV4Classifier
+
+import java.io.InputStream
+
 
 class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     MapboxMap.OnMapClickListener, View.OnClickListener, TextureView.SurfaceTextureListener {
@@ -756,16 +761,17 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
 
 
-        vM.previewWidth = 2611
-        vM.previewHeight = 1180
+        vM.previewWidth = width
+        vM.previewHeight = height
+        Log.d("BANANAPIE", "RGB FRAME BITMAP DIMENSIONS: ${vM.previewWidth} x ${vM.previewHeight}")
 
-        vM.sensorOrientation = 90
+        vM.sensorOrientation = 0
 
-        vM.rgbFrameBitmap = Bitmap.createBitmap(
-            vM.previewWidth,
-            vM.previewHeight,
-            Bitmap.Config.ARGB_8888
-        )
+//        vM.rgbFrameBitmap = Bitmap.createBitmap(
+//            vM.previewWidth,
+//            vM.previewHeight,
+//            Bitmap.Config.ARGB_8888
+//        )
         vM.croppedBitmap = Bitmap.createBitmap(cropSize, cropSize, Bitmap.Config.ARGB_8888)
 
         vM.frameToCropTransform = ImageUtils.getTransformationMatrix(
@@ -801,10 +807,8 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     }
 
     //When a SurfaceTexture is updated
-    @RequiresApi(Build.VERSION_CODES.O)
+    @RequiresApi(29)
     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
-//        vM.bitmap.postValue(videoSurface.bitmap)
-
         videoSurface.bitmap?.let {
             runObjectDetection(it)
         }
@@ -827,26 +831,21 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
      *      TFLite Object Detection function
      */
     @RequiresApi(Build.VERSION_CODES.Q)
-    private fun runObjectDetection(bitmap: Bitmap) {
+    private fun runObjectDetection(bmp: Bitmap) {
+
+        var bitmap = getBitmapFromAsset(applicationContext, "bmp.jpg")
+        bitmap = bitmap?.let { Bitmap.createScaledBitmap(it, vM.previewWidth, vM.previewHeight, false) }
+
         //invalidate the overlay so that it is immediately ready to be drawn on
         trackingOverlay.postInvalidate()
 
-        // No mutex needed as this method is not reentrant.
-//        if (computingDetection) {
-//            readyForNextImage()
-//            return
-//        }
-//        computingDetection = true
-
-//        vM.rgbFrameBitmap?.setPixels(getRgbBytes(), 0, vM.previewWidth, 0, 0, vM.previewWidth, vM.previewHeight)
-        vM.rgbFrameBitmap = bitmap.copy(Bitmap.Config.ARGB_8888,true)
-//        readyForNextImage()
-
         val canvas = vM.croppedBitmap?.let { Canvas(it) }
 
-        vM.rgbFrameBitmap?.let { vM.frameToCropTransform?.let { it1 ->
-            canvas?.drawBitmap(it,
-                it1, null)
+        bitmap.let { vM.frameToCropTransform?.let { it1 ->
+            if (it != null) {
+                canvas?.drawBitmap(it,
+                    it1, null)
+            }
         } }
 
         // For examining the actual TF input.
@@ -859,38 +858,41 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             val results: List<Classifier.Recognition> = vM.detector.recognizeImage(vM.croppedBitmap)
             Log.e("BANANAPIE", "run: " + results.size)
             vM.lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime
-            vM.cropCopyBitmap = vM.croppedBitmap?.let { Bitmap.createBitmap(it) }
+
             val paint = Paint()
             paint.color = Color.RED
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = 2.0f
 
-            var minimumConfidence: Float = vM.MINIMUM_CONFIDENCE_TF_OD_API
+            val minimumConfidence: Float = vM.MINIMUM_CONFIDENCE_TF_OD_API
 
             val mappedRecognitions: MutableList<Classifier.Recognition> = LinkedList<Classifier.Recognition>()
             for (result in results) {
-                val location: RectF = result.getLocation()
+                val location: RectF = result.location
                 if (result.confidence!! >= minimumConfidence) {
-                    vM.cropCopyBitmap?.let { Canvas(it) }?.drawRect(location, paint)
+                    canvas?.drawRect(location, paint)
                     vM.cropToFrameTransform?.mapRect(location)
-                    result.setLocation(location)
+                    result.location = location
                     mappedRecognitions.add(result)
                 }
             }
             vM.tracker?.trackResults(mappedRecognitions, results.size.toLong())
             trackingOverlay.postInvalidate()
             Log.d("BANANAPIE", "${vM.lastProcessingTimeMs} ms")
-            vM.cropCopyBitmap?.let { ImageUtils.saveBitmap(it, "photo", applicationContext) }
-//            computingDetection = false
-//            runOnUiThread {
-//                showFrameInfo(previewWidth.toString() + "x" + previewHeight)
-//                showCropInfo(
-//                    cropCopyBitmap.getWidth().toString() + "x" + cropCopyBitmap.getHeight()
-//                )
-//                showInference(lastProcessingTimeMs.toString() + "ms")
-//            }
         }
 
+    }
+    fun getBitmapFromAsset(context: Context, filePath: String?): Bitmap? {
+        val assetManager = context.assets
+        val istr: InputStream
+        var bitmap: Bitmap? = null
+        try {
+            istr = assetManager.open(filePath!!)
+            bitmap = BitmapFactory.decodeStream(istr)
+        } catch (e: IOException) {
+            // handle exception
+        }
+        return bitmap
     }
 
 }
