@@ -723,6 +723,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     }
 
     //When a TextureView's SurfaceTexture is ready for use, use it to initialize the codecManager
+    @RequiresApi(Build.VERSION_CODES.Q)
     override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
         if (vM.codecManager == null) {
             vM.codecManager = DJICodecManager(this, surface, width, height)
@@ -792,20 +793,17 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             vM.sensorOrientation
         )
 
-//        lifecycleScope.launch(Dispatchers.Default){
-//            while (true){
-//                Log.
-//            }
-//        }
+        lifecycleScope.launch(Dispatchers.Default){
+            while (true){
+                videoSurface.bitmap?.let {
+                    runObjectDetection(it)
+                }
+            }
+        }
     }
 
     //When a SurfaceTexture is updated
-    @RequiresApi(29)
     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
-        videoSurface.bitmap?.let {
-            runObjectDetection(it)
-        }
-
     }
 
     //when a SurfaceTexture's size changes
@@ -815,7 +813,6 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
         vM.codecManager?.cleanSurface()
         vM.codecManager = null
-
         return false
     }
 
@@ -828,33 +825,35 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
 //        var bitmap = Utils.getBitmapFromAsset(applicationContext, "bmp.jpg")
         //invalidate the overlay so that it is immediately ready to be drawn on
-        trackingOverlay.postInvalidate()
+        runOnUiThread{
+            trackingOverlay.postInvalidate()
 
-        vM.croppedBitmap = Bitmap.createScaledBitmap(bitmap, 416, 416, false)
+            vM.croppedBitmap = Bitmap.createScaledBitmap(bitmap, 416, 416, false)
 
-        // For examining the actual TF input.
-        if (vM.SAVE_PREVIEW_BITMAP) {
-            vM.croppedBitmap?.let { ImageUtils.saveBitmap(it, "photo", applicationContext) }
+            // For examining the actual TF input.
+            if (vM.SAVE_PREVIEW_BITMAP) {
+                vM.croppedBitmap?.let { ImageUtils.saveBitmap(it, "photo", applicationContext) }
+            }
         }
 
-        lifecycleScope.launch(Dispatchers.Main) {
-            val startTime = SystemClock.uptimeMillis()
-            val results: List<Classifier.Recognition> = vM.detector.recognizeImage(vM.croppedBitmap)
-            Log.e("BANANAPIE", "run: " + results.size)
-            vM.lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime
+        val startTime = SystemClock.uptimeMillis()
+        vM.results = vM.detector.recognizeImage(vM.croppedBitmap) as MutableList<Classifier.Recognition>?
+        Log.e("BANANAPIE", "run: " + (vM.results)?.size)
+        vM.lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime
 
+        runOnUiThread{
             val paint = Paint()
             paint.color = Color.RED
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = 2.0f
 
-            val canvas =  Canvas(bitmap)
+            val canvas = Canvas(bitmap)
 
             val minimumConfidence: Float = vM.MINIMUM_CONFIDENCE_TF_OD_API
 
             val mappedRecognitions: MutableList<Classifier.Recognition> =
                 LinkedList<Classifier.Recognition>()
-            for (result in results) {
+            for (result in vM.results!!) {
                 val location: RectF = result.location
                 if (result.confidence!! >= minimumConfidence) {
                     canvas.drawRect(location, paint)
@@ -863,11 +862,12 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                     mappedRecognitions.add(result)
                 }
             }
-            vM.tracker?.trackResults(mappedRecognitions, results.size.toLong())
+            vM.tracker?.trackResults(mappedRecognitions, vM.results!!.size.toLong())
             trackingOverlay.postInvalidate()
             Log.d("BANANAPIE", "${vM.lastProcessingTimeMs} ms")
         }
 
     }
+
 
 }

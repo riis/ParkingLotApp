@@ -3,6 +3,7 @@ package com.dji.droneparking
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import android.os.HandlerThread
 import android.util.Size
 import androidx.lifecycle.ViewModel
 import com.dji.droneparking.environment.BorderedText
@@ -23,6 +24,7 @@ import org.tensorflow.lite.task.vision.detector.ObjectDetector
 import java.util.*
 
 class FlightPlanActivityViewModel : ViewModel() {
+    var results: MutableList<Classifier.Recognition>? = null
     var lastProcessingTimeMs: Long = 0
     var sensorOrientation: Int = 0
     var previewHeight: Int = 0
@@ -49,6 +51,7 @@ class FlightPlanActivityViewModel : ViewModel() {
     val SAVE_PREVIEW_BITMAP = false
     val TEXT_SIZE_DIP = 6f
 
+//    val handlerThread = HandlerThread("inference")
 
 
 
