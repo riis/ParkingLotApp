@@ -1,4 +1,4 @@
-package com.dji.droneparking.activity
+package com.dji.droneparking.core
 
 
 import android.content.Context
@@ -64,7 +64,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     private var mapTouch: Boolean = false
 
     private lateinit var cancelFlightBtn: Button
-    private lateinit var overlayView: LinearLayout
+//    private lateinit var overlayView: LinearLayout
     private lateinit var layoutConfirmPlan: LinearLayout
     private lateinit var layoutCancelPlan: LinearLayout
     private lateinit var startFlightBtn: Button
@@ -243,18 +243,18 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                 updateDroneLocation()
                 cameraUpdate()
             }
-            R.id.get_started_button -> {
-                overlayView.animate()
-                    .alpha(0.0f)
-                    .translationXBy(1000f)
-                    .setDuration(500)
-                    .setListener(null)
-                    .start()
-
-                locateBtn.visibility = View.VISIBLE
-                cameraBtn.visibility = View.VISIBLE
-                showClearMemoryDialog()
-            }
+//            R.id.get_started_button -> {
+////                overlayView.animate()
+////                    .alpha(0.0f)
+////                    .translationXBy(1000f)
+////                    .setDuration(500)
+////                    .setListener(null)
+////                    .start()
+//
+//                locateBtn.visibility = View.VISIBLE
+//                cameraBtn.visibility = View.VISIBLE
+//                showClearMemoryDialog()
+//            }
             R.id.start_flight_button -> {
                 when (vM.aircraft) {
                     null -> {
@@ -517,13 +517,13 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         cancelFlightBtn = findViewById(R.id.cancel_flight_button)
         locateBtn = findViewById(R.id.locate_button)
         val cancelFlightPlanBtn: Button = findViewById(R.id.cancel_flight_plan_button)
-        val getStartedBtn: Button = findViewById(R.id.get_started_button)
+//        val getStartedBtn: Button = findViewById(R.id.get_started_button)
 
         takeoffWidget = findViewById(R.id.takeoff_widget_flight_plan)
         layoutConfirmPlan = findViewById(R.id.ll_confirm_flight_plan)
         layoutCancelPlan = findViewById(R.id.ll_cancel_flight_plan)
 
-        overlayView = findViewById(R.id.map_help_overlay)
+//        overlayView = findViewById(R.id.map_help_overlay)
         videoView = findViewById(R.id.video_view)
 
         videoSurface = findViewById(R.id.video_previewer_surface)
@@ -537,7 +537,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         vM.aircraft = DJIDemoApplication.getProductInstance() as Aircraft
 
         locateBtn.setOnClickListener(this)
-        getStartedBtn.setOnClickListener(this)
+//        getStartedBtn.setOnClickListener(this)
         startFlightBtn.setOnClickListener(this)
         cancelFlightPlanBtn.setOnClickListener(this)
         cancelFlightBtn.setOnClickListener(this)

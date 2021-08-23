@@ -3,7 +3,7 @@ package com.dji.droneparking.util
 import android.os.Handler
 import android.util.Log
 import android.widget.TextView
-import com.dji.droneparking.activity.FlightPlanActivity
+import com.dji.droneparking.core.FlightPlanActivity
 import dji.common.error.DJIError
 import dji.common.mission.waypoint.WaypointMission
 import dji.common.mission.waypoint.WaypointMissionDownloadEvent

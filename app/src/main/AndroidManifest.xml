@@ -38,7 +38,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.DroneParking">
+        android:theme="@style/splashScreenTheme">
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
@@ -48,7 +48,7 @@
             android:value="@integer/google_play_services_version" />
 
         <activity
-            android:name=".activity.ConnectionActivity"
+            android:name=".core.ConnectionActivity"
             android:configChanges="orientation"
             android:launchMode="singleTop"
             android:screenOrientation="portrait">
@@ -77,7 +77,7 @@
             android:value="${DJI_API_KEY}" />
 
         <activity
-            android:name=".activity.FlightPlanActivity"
+            android:name=".core.FlightPlanActivity"
             android:configChanges="keyboard|keyboardHidden|orientation"
             android:label="@string/title_activity_flight_plan"
             android:largeHeap="true"
@@ -89,7 +89,7 @@
         </activity>
 
         <activity
-            android:name=".activity.PhotoStitcherActivity"
+            android:name=".core.PhotoStitcherActivity"
             android:configChanges="keyboard|keyboardHidden|orientation"
             android:label="photo_stitcher_activity"
             android:screenOrientation="userLandscape"
