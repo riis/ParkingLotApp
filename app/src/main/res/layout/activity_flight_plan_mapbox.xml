@@ -161,7 +161,6 @@
         android:text="@string/locate"
         android:textAlignment="center"
         android:textColor="@color/white"
-        android:visibility="gone"
         tools:visibility="visible" />
 
     <Button
@@ -177,6 +176,5 @@
         android:text="@string/camera"
         android:textAlignment="center"
         android:textColor="@color/white"
-        android:visibility="gone"
         tools:visibility="visible" />
 </RelativeLayout>

@@ -295,12 +295,12 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                 if (vM.isCameraShowing) {
                     videoView.visibility = View.VISIBLE
                     locateBtn.visibility = View.GONE
-                    cameraBtn.text = R.string.map.toString()
+                    cameraBtn.text = getString(R.string.map)
 
                 } else {
                     videoView.visibility = View.GONE
                     locateBtn.visibility = View.VISIBLE
-                    cameraBtn.text = R.string.camera.toString()
+                    cameraBtn.text = getString(R.string.camera)
                 }
             }
         }
@@ -517,7 +517,6 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         cancelFlightBtn = findViewById(R.id.cancel_flight_button)
         locateBtn = findViewById(R.id.locate_button)
         val cancelFlightPlanBtn: Button = findViewById(R.id.cancel_flight_plan_button)
-//        val getStartedBtn: Button = findViewById(R.id.get_started_button)
 
         takeoffWidget = findViewById(R.id.takeoff_widget_flight_plan)
         layoutConfirmPlan = findViewById(R.id.ll_confirm_flight_plan)
