@@ -148,42 +148,6 @@
             android:textColor="#FFFFFF" />
     </LinearLayout>
 
-
-    <LinearLayout
-        android:id="@+id/map_help_overlay"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#DD000000"
-        android:orientation="vertical">
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="40dp"
-            android:text="@string/welcome"
-            android:textAlignment="center"
-            android:textColor="@color/white"
-            android:textSize="36sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/overlay_text"
-            android:textAlignment="center"
-            android:textColor="@color/white" />
-
-        <Button
-            android:id="@+id/get_started_button"
-            android:layout_width="124dp"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginTop="25dp"
-            android:background="@color/blue_sea"
-            android:text="@string/get_started"
-            android:textColor="@color/white" />
-
-    </LinearLayout>
-
     <Button
         android:id="@+id/locate_button"
         android:layout_width="150dp"

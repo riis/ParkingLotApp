@@ -10,7 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
-import com.dji.droneparking.activity.PhotoStitcherActivity
+import com.dji.droneparking.core.PhotoStitcherActivity
 import com.dji.droneparking.util.DJIDemoApplication.getCameraInstance
 import com.dji.droneparking.util.Tools.showToast
 import dji.common.camera.SettingsDefinitions

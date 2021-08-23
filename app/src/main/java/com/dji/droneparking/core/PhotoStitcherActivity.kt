@@ -1,4 +1,4 @@
-package com.dji.droneparking.activity
+package com.dji.droneparking.core
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -11,7 +11,6 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
 import com.dji.droneparking.R
 import com.dji.droneparking.dialog.DownloadDialog
 import com.dji.droneparking.dialog.LoadingDialog

@@ -4,7 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
-import com.dji.droneparking.activity.ConnectionActivity
+import com.dji.droneparking.core.ConnectionFragment
 import dji.common.error.DJIError
 import dji.common.error.DJISDKError
 import dji.sdk.base.BaseComponent
@@ -19,36 +19,39 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     val connectionStatus: MutableLiveData<Boolean> = MutableLiveData(false)
+    var rCConnected : Boolean = false
+    var droneConnected : Boolean = false
+    var droneName : String = ""
 
     fun registerApp() {
         DJISDKManager.getInstance()
             .registerApp(getApplication(), object : DJISDKManager.SDKManagerCallback {
                 override fun onRegister(error: DJIError?) {
                     if (error == DJISDKError.REGISTRATION_SUCCESS) {
-                        Log.i(ConnectionActivity.TAG, "onRegister: Registration Successful")
+                        Log.i(ConnectionFragment.TAG, "onRegister: Registration Successful")
 //                    DJISDKManager.getInstance().enableBridgeModeWithBridgeAppIP(BuildConfig.IP_ADDRESS)
                     } else {
                         Log.i(
-                            ConnectionActivity.TAG,
+                            ConnectionFragment.TAG,
                             "onRegister: Registration Failed - ${error?.description}"
                         )
                     }
                 }
 
                 override fun onProductDisconnect() {
-                    Log.i(ConnectionActivity.TAG, "onProductDisconnect: Product Disconnected")
+                    Log.i(ConnectionFragment.TAG, "onProductDisconnect: Product Disconnected")
                     connectionStatus.postValue(false)
                 }
 
                 override fun onProductConnect(baseProduct: BaseProduct?) {
-                    Log.i(ConnectionActivity.TAG, "onProductConnect: Product Connected")
+                    Log.i(ConnectionFragment.TAG, "onProductConnect: Product Connected")
                     product.postValue(baseProduct)
                     connectionStatus.postValue(true)
                 }
 
                 override fun onProductChanged(baseProduct: BaseProduct?) {
                     Log.i(
-                        ConnectionActivity.TAG,
+                        ConnectionFragment.TAG,
                         "onProductChanged: Product Changed - $baseProduct"
                     )
                     product.postValue(baseProduct)
@@ -61,13 +64,13 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
                     newComponent: BaseComponent?
                 ) {
                     Log.i(
-                        ConnectionActivity.TAG,
+                        ConnectionFragment.TAG,
                         "onComponentChange key: $componentKey, oldComponent: $oldComponent, newComponent: $newComponent"
                     )
                     newComponent?.let { component ->
                         component.setComponentListener { connected ->
                             Log.i(
-                                ConnectionActivity.TAG,
+                                ConnectionFragment.TAG,
                                 "onComponentConnectivityChange: $connected"
                             )
                         }
