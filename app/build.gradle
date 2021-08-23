@@ -17,9 +17,7 @@ android {
     buildToolsVersion "30.0.3"
     useLibrary 'org.apache.http.legacy'
     sourceSets.main.res.filter.exclude '**/DJIImageDownloader.kt'
-    aaptOptions {
-        noCompress "tflite"
-    }
+
     defaultConfig {
         applicationId 'com.riis.livestream'
         minSdkVersion 22
@@ -105,6 +103,9 @@ android {
 
 dependencies {
 
+    implementation 'com.github.bumptech.glide:glide:4.12.0'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.12.0'
+
     //DJI Dependencies
     implementation 'androidx.multidex:multidex:2.0.0'
     implementation('com.dji:dji-sdk:4.13.1', {
@@ -143,6 +144,8 @@ dependencies {
     implementation 'androidx.cardview:cardview:1.0.0' //Card views
 
     implementation 'org.tensorflow:tensorflow-lite-task-vision:0.2.0'
-    implementation 'org.tensorflow:tensorflow-lite:2.4.0'
-    implementation 'com.google.mlkit:object-detection-custom:16.3.3'
+//    implementation 'org.tensorflow:tensorflow-lite:2.4.0'
+//    implementation 'org.tensorflow:tensorflow-lite-gpu:2.3.0'
+    implementation 'org.tensorflow:tensorflow-lite:2.2.0'
+    implementation 'org.tensorflow:tensorflow-lite-gpu:2.2.0'
 }

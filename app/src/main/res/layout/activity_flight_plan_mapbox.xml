@@ -19,7 +19,7 @@
         android:backgroundTint="@color/black"
         android:visibility="gone">
 
-        <TextureView
+        <com.dji.droneparking.customview.AutoFitTextureView
             android:id="@+id/video_previewer_surface"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -33,8 +33,8 @@
             custom:layout_constraintStart_toStartOf="parent"
             custom:layout_constraintTop_toTopOf="parent" />
 
-        <ImageView
-            android:id="@+id/detectorView"
+        <com.dji.droneparking.customview.OverlayView
+            android:id="@+id/tracking_overlay"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_gravity="center"
@@ -46,6 +46,7 @@
             custom:layout_constraintEnd_toEndOf="parent"
             custom:layout_constraintStart_toStartOf="parent"
             custom:layout_constraintTop_toTopOf="parent"/>
+
     </androidx.cardview.widget.CardView>
 
     <LinearLayout

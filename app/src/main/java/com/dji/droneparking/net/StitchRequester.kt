@@ -6,6 +6,7 @@ import android.os.Handler
 import android.os.Message
 import android.util.Log
 import androidx.annotation.Nullable
+import com.bumptech.glide.Glide
 import java.io.BufferedInputStream
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -80,51 +81,50 @@ class StitchRequester {
     }
 
     /* Add a list of images to the batch by sending it over the network */
-    fun addImages(images: MutableList<Bitmap>) {
+    fun addImage(image: Bitmap) {
         Thread {
-            for (image in images) {
-                val url: URL? = getURLforPath(NetworkInformation.PATH_STITCH_ADD_IMAGE)
-                var connection: HttpsURLConnection? = null
-                try {
-                    if (url != null) {
-                        connection = url.openConnection() as HttpsURLConnection
-                    }
-                    if (connection != null) {
-                        connection.requestMethod = "POST"
-                    }
-                    connection?.setRequestProperty("Batch-Id", batchId)
-                    connection?.setRequestProperty("X-tag", xtag)
-                    connection?.setRequestProperty("Content-Type", "image/png")
-                    // Add the image data to the request.
-                    connection?.doInput = true
-                    connection?.doOutput = true
-                    // Send the request.
-                    connection?.connect()
-                    val output: OutputStream? = connection?.outputStream
-                    image.compress(Bitmap.CompressFormat.PNG, 100, output)
-                    output?.close()
 
-                    if (connection != null) {
-                        if (connection.responseCode == 202) {
-                            sendMessage(StitchMessage.STITCH_IMAGE_ADD_SUCCESS, null)
-                        } else {
-                            sendMessage(
-                                StitchMessage.STITCH_IMAGE_ADD_FAILURE,
-                                "Response code: " + connection.responseCode
-                            )
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "addImagesrunException: $e")
-                    sendMessage(StitchMessage.STITCH_IMAGE_ADD_FAILURE, null)
-                    e.printStackTrace()
-                } finally {
-                    connection?.disconnect()
+            val url: URL? = getURLforPath(NetworkInformation.PATH_STITCH_ADD_IMAGE)
+            var connection: HttpsURLConnection? = null
+            try {
+                if (url != null) {
+                    connection = url.openConnection() as HttpsURLConnection
                 }
-                Log.d(TAG, "addImagesrunBeforeForEachEnd: ")
+                if (connection != null) {
+                    connection.requestMethod = "POST"
+                }
+                connection?.setRequestProperty("Batch-Id", batchId)
+                connection?.setRequestProperty("X-tag", xtag)
+                connection?.setRequestProperty("Content-Type", "image/png")
+                // Add the image data to the request.
+                connection?.doInput = true
+                connection?.doOutput = true
+                // Send the request.
+                connection?.connect()
+                val output: OutputStream? = connection?.outputStream
+                image.compress(Bitmap.CompressFormat.PNG, 100, output)
+                output?.close()
+
+                if (connection != null) {
+                    if (connection.responseCode == 202) {
+                        sendMessage(StitchMessage.STITCH_IMAGE_ADD_SUCCESS, null)
+                    } else {
+                        sendMessage(
+                            StitchMessage.STITCH_IMAGE_ADD_FAILURE,
+                            "Response code: " + connection.responseCode
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "addImagesrunException: $e")
+                sendMessage(StitchMessage.STITCH_IMAGE_ADD_FAILURE, null)
+                e.printStackTrace()
+            } finally {
+                connection?.disconnect()
             }
-            Log.d(TAG, "addImagesrunForEachEnd: ")
-        }.start()
+
+            }.start()
+
     }
 
     fun lockBatch() {

@@ -48,6 +48,11 @@ class DownloadDialog(val text: String) : DialogFragment() {
         binding.progressBar.progress = progress
     }
 
+    fun setText(text: String){
+        binding.textView.text = text
+    }
+
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null

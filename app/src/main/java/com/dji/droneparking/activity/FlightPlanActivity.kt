@@ -3,30 +3,30 @@ package com.dji.droneparking.activity
 
 import android.content.Context
 import android.graphics.*
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
+import android.os.*
 import android.util.Log
+import android.util.TypedValue
 import android.view.TextureView
 import android.view.View
 import android.view.WindowManager
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.Toast
+import android.widget.*
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
-import com.dji.droneparking.viewmodel.FlightPlanActivityViewModel
+import androidx.lifecycle.lifecycleScope
 import com.dji.droneparking.R
-import com.dji.droneparking.dialog.LoadingDialog
+import com.dji.droneparking.customview.OverlayView
+import com.dji.droneparking.dialog.DownloadDialog
+import com.dji.droneparking.environment.BorderedText
+import com.dji.droneparking.environment.ImageUtils
+import com.dji.droneparking.tflite.Classifier
+import com.dji.droneparking.tflite.YoloV4Classifier
+import com.dji.droneparking.tracking.MultiBoxTracker
 import com.dji.droneparking.util.*
 import com.dji.droneparking.util.Tools.showToast
-import com.google.mlkit.common.model.LocalModel
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.objects.ObjectDetection
-import com.google.mlkit.vision.objects.custom.CustomObjectDetectorOptions
+import com.dji.droneparking.viewmodel.FlightPlanActivityViewModel
 import com.mapbox.mapboxsdk.Mapbox
 import com.mapbox.mapboxsdk.camera.CameraPosition
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
@@ -46,19 +46,22 @@ import dji.common.util.CommonCallbacks
 import dji.sdk.base.BaseProduct
 import dji.sdk.camera.VideoFeeder
 import dji.sdk.codec.DJICodecManager
+import dji.sdk.gimbal.Gimbal
 import dji.sdk.media.MediaFile
 import dji.sdk.media.MediaManager
 import dji.sdk.products.Aircraft
 import dji.ux.widget.TakeOffWidget
-import org.tensorflow.lite.support.image.TensorImage
-import org.tensorflow.lite.task.vision.detector.ObjectDetector
+import kotlinx.coroutines.*
+import java.io.IOException
 import java.util.*
+
 
 class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     MapboxMap.OnMapClickListener, View.OnClickListener, TextureView.SurfaceTextureListener {
 
-    private val viewModel: FlightPlanActivityViewModel by viewModels()
+    private val vM: FlightPlanActivityViewModel by viewModels()
 
+    private var mapTouch: Boolean = false
 
     private lateinit var cancelFlightBtn: Button
     private lateinit var overlayView: LinearLayout
@@ -71,13 +74,17 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var cameraBtn: Button
     private lateinit var videoSurface: TextureView
     private lateinit var videoView: CardView
+    private lateinit var gimbal: Gimbal
+    private lateinit var trackingOverlay: OverlayView
 
-    private lateinit var mLoadingDialog: LoadingDialog
+    private lateinit var mLoadingDialog: DownloadDialog
+
+    private var currentDeleteIndex = 0
+    private var numOfOldPhotos = 0
 
     private var mMediaManager: MediaManager? = null //uninitialized media manager
     private var mediaFileList: MutableList<MediaFile> =
         mutableListOf() //empty list of MediaFile objects
-    private lateinit var detectorView: ImageView
     private lateinit var operator: MavicMiniMissionOperator
 
     private val symbolDragListener = object : OnSymbolDragListener {
@@ -89,15 +96,51 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         override fun onAnnotationDragStarted(symbol: Symbol) {
 
-            viewModel.symbols.remove(symbol)
-            viewModel.polygonCoordinates.remove(symbol.latLng)
+            vM.symbols.remove(symbol)
+            vM.polygonCoordinates.remove(symbol.latLng)
 
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        operator = viewModel.getWaypointMissionOperator(this)
+        operator = vM.getWaypointMissionOperator(this)
+
+//        vM.options = ObjectDetector.ObjectDetectorOptions
+//            .builder()
+//            .setNumThreads(2)
+//            .setMaxResults(5)
+//            .setScoreThreshold(0.5f)
+//            .build()
+
+//        vM.detector = ObjectDetector.createFromFileAndOptions(
+//            this, // the application context
+//            "model.tflite", // must be same as the filename in assets folder
+//            vM.options
+//        )
+
+
+//        val rotation = Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).pitch(-90f).build()
+//        try {
+//            gimbal = DJISDKManager.getInstance().product.gimbal
+//
+//            gimbal.rotate(
+//                rotation
+//            ) { djiError ->
+//                if (djiError == null) {
+//                    Log.d("BANANAPIE", "rotate gimbal success")
+//                    Toast.makeText(applicationContext, "rotate gimbal success", Toast.LENGTH_SHORT)
+//                        .show()
+//                } else {
+//                    Log.d("BANANAPIE", "rotate gimbal error " + djiError.description)
+//                    Toast.makeText(applicationContext, djiError.description, Toast.LENGTH_SHORT)
+//                        .show()
+//                }
+//            }
+//        } catch (e: Exception) {
+//            Log.d("BANANAPIE", "Drone is likely not connected")
+//        }
+
 
         setContentView(R.layout.activity_flight_plan_mapbox)
 
@@ -107,20 +150,22 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         mContext = applicationContext
         Mapbox.getInstance(mContext, getString(R.string.mapbox_api_key))
 
-        viewModel.mapFragment =
+        vM.mapFragment =
             supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
-        viewModel.mapFragment.onCreate(savedInstanceState)
-        viewModel.mapFragment.getMapAsync(this)
+        vM.mapFragment.onCreate(savedInstanceState)
+        vM.mapFragment.getMapAsync(this)
 
 
 
         operator.droneLocationLiveData.observe(this, { location ->
 
-            if (viewModel.styleReady) {
-                viewModel.droneLocation = location
-                if (!viewModel.located) {
+            if (vM.styleReady) {
+
+                vM.droneLocation = location
+
+                if (!vM.located) {
                     cameraUpdate()
-                    viewModel.located = true
+                    vM.located = true
                 }
 
                 updateDroneLocation()
@@ -129,18 +174,20 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         // The receivedVideoDataListener receives the raw video data and the size of the data from the DJI product.
         // It then sends this data to the codec manager for decoding.
-        viewModel.receivedVideoDataListener = VideoFeeder.VideoDataListener { videoBuffer, size ->
-            viewModel.codecManager?.sendDataToDecoder(videoBuffer, size)
+        vM.receivedVideoDataListener = VideoFeeder.VideoDataListener { videoBuffer, size ->
+            vM.codecManager?.sendDataToDecoder(videoBuffer, size)
+//            lifecycleScope.async(Dispatchers.Default){runObjectDetection(BitmapFactory.decodeByteArray(videoBuffer, 0, videoBuffer.size))}
+//            Log.d("BANANAPIE", "new frame")
         }
     }
 
     override fun onMapReady(mapboxMap: MapboxMap) {
 
-        viewModel.mbMap = mapboxMap
+        vM.mbMap = mapboxMap
 
         mapboxMap.setStyle(Style.SATELLITE_STREETS) { style: Style ->
 
-            viewModel.styleReady = true
+            vM.styleReady = true
             var bm: Bitmap? =
                 Tools.bitmapFromVectorDrawable(mContext, R.drawable.ic_waypoint_marker_unvisited)
             bm?.let { mapboxMap.style?.addImage("ic_waypoint_marker_unvisited", it) }
@@ -148,15 +195,15 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             bm = Tools.bitmapFromVectorDrawable(mContext, R.drawable.ic_drone)
             bm?.let { mapboxMap.style?.addImage("ic_drone", it) }
 
-            viewModel.fillManager =
-                FillManager(viewModel.mapFragment.view as MapView, mapboxMap, style)
-            viewModel.lineManager =
-                LineManager(viewModel.mapFragment.view as MapView, mapboxMap, style)
+            vM.fillManager =
+                FillManager(vM.mapFragment.view as MapView, mapboxMap, style)
+            vM.lineManager =
+                LineManager(vM.mapFragment.view as MapView, mapboxMap, style)
 
-            viewModel.symbolManager =
-                SymbolManager(viewModel.mapFragment.view as MapView, mapboxMap, style)
-            viewModel.symbolManager.iconAllowOverlap = true
-            viewModel.symbolManager.addDragListener(symbolDragListener)
+            vM.symbolManager =
+                SymbolManager(vM.mapFragment.view as MapView, mapboxMap, style)
+            vM.symbolManager.iconAllowOverlap = true
+            vM.symbolManager.addDragListener(symbolDragListener)
 
 
         }
@@ -167,24 +214,27 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(position))
 
-        viewModel.mbMap?.addOnMapClickListener(this)
+        vM.mbMap?.addOnMapClickListener(this)
     }
 
     override fun onMapClick(point: LatLng): Boolean {
 
-        val symbol = viewModel.symbolManager.create(
-            SymbolOptions()
-                .withLatLng(LatLng(point))
-                .withIconImage("ic_waypoint_marker_unvisited")
-                .withIconHaloWidth(2.0f)
-                .withDraggable(true)
-        )
+        if (mapTouch){
+            val symbol = vM.symbolManager.create(
+                SymbolOptions()
+                    .withLatLng(LatLng(point))
+                    .withIconImage("ic_waypoint_marker_unvisited")
+                    .withIconHaloWidth(2.0f)
+                    .withDraggable(true)
+            )
+            //      Add new point to the list
+            configureFlightPlan(symbol)
+            return true
+        }
+        else{
+            return false
+        }
 
-
-        //      Add new point to the list
-        configureFlightPlan(symbol)
-
-        return true
     }
 
     override fun onClick(v: View?) {
@@ -206,7 +256,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                 showClearMemoryDialog()
             }
             R.id.start_flight_button -> {
-                when (viewModel.aircraft) {
+                when (vM.aircraft) {
                     null -> {
                         Toast.makeText(mContext, "Please connect to a drone", Toast.LENGTH_SHORT)
                             .show()
@@ -214,23 +264,24 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                     else -> {
 
                         val djiMission: WaypointMission =
-                            FlightPlanner.createFlightMissionFromCoordinates(viewModel.flightPlan2D)
+                            FlightPlanner.createFlightMissionFromCoordinates(vM.flightPlan2D)
 
-                        viewModel.manager = WaypointMissionManager(
+                        vM.manager = WaypointMissionManager(
                             djiMission,
                             operator,
                             findViewById(R.id.label_flight_plan),
                             this@FlightPlanActivity
                         )
 
-                        viewModel.manager?.startMission()
+                        vM.manager?.startMission()
+                        mapTouch = false
                         layoutConfirmPlan.visibility = View.GONE
                         layoutCancelPlan.visibility = View.VISIBLE
                     }
                 }
             }
             R.id.cancel_flight_button -> {
-                viewModel.manager?.stopFlight() ?: return
+                vM.manager?.stopFlight() ?: return
                 clearMapViews()
                 layoutCancelPlan.visibility = View.GONE
             }
@@ -239,9 +290,9 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                 clearMapViews()
             }
             R.id.camera_button -> {
-                viewModel.isCameraShowing = !viewModel.isCameraShowing
+                vM.isCameraShowing = !vM.isCameraShowing
 
-                if (viewModel.isCameraShowing) {
+                if (vM.isCameraShowing) {
                     videoView.visibility = View.VISIBLE
                     locateBtn.visibility = View.GONE
                     cameraBtn.text = R.string.map.toString()
@@ -283,9 +334,11 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     private fun showClearMemoryDialog() {
         val dialog = AlertDialog.Builder(this)
             .setMessage(R.string.ensure_clear_sd)
+            .setCancelable(false)
             .setTitle(R.string.title_clear_sd)
             .setNegativeButton(R.string.no, null)
             .setPositiveButton(R.string.yes) { _, _ ->
+
                 clearSDCard()
             }
             .create()
@@ -293,15 +346,68 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         dialog.show()
     }
 
-    private fun clearSDCard() {
-        Log.d("BANANAPIE", "attempting to clear SD card")
-        mLoadingDialog.show(this.supportFragmentManager, "tagCanBeWhatever")
+    private fun deleteOneFileFromList(){
+
+        val deleteList: List<MediaFile> = listOf(mediaFileList[0])
 
         DJIDemoApplication.getCameraInstance()
             ?.let { camera -> //Get an instance of the connected DJI product's camera
                 mMediaManager = camera.mediaManager //Get the camera's MediaManager
-
                 mMediaManager?.let { mediaManager ->
+
+                    mediaManager.deleteFiles(
+                        deleteList,
+                        object :
+                            CommonCallbacks.CompletionCallbackWithTwoParam<List<MediaFile?>?, DJICameraError?> {
+                            //if the deletion from the SD card is successful...
+                            override fun onSuccess(
+                                x: List<MediaFile?>?,
+                                y: DJICameraError?
+                            ) {
+                                currentDeleteIndex++
+
+                                Log.d(
+                                    "BANANAPIE",
+                                    "successfully deleted file $currentDeleteIndex/$numOfOldPhotos"
+                                )
+                                runOnUiThread {
+                                    mLoadingDialog.setText("Deleted image $currentDeleteIndex/$numOfOldPhotos")
+                                }
+                                val tmpProgress = (1.0 * currentDeleteIndex / numOfOldPhotos * 100).toInt()
+                                mLoadingDialog.setProgress(tmpProgress)
+                                if (tmpProgress == 100){
+                                    val tempHandler = Handler(Looper.getMainLooper())
+                                    tempHandler.postDelayed({
+                                        Log.d("BANANAPIE", "last 2 sec")
+                                    }, 2000)
+                                }
+
+
+                            }
+
+                            //if the deletion from the SD card failed, alert the user
+                            override fun onFailure(error: DJIError) {
+                                Log.d("BANANAPIE", "failed to clear SD card")
+                            }
+                        })
+                }
+            }
+
+        val handler = Handler(Looper.getMainLooper())
+        handler.postDelayed({
+            Log.d("BANANAPIE", "2 sec")
+            //mLoadingDialog.dismiss()
+            updateMediaFileList()
+        }, 2000)
+    }
+
+    private fun updateMediaFileList() {
+
+        DJIDemoApplication.getCameraInstance()
+            ?.let { camera ->
+                mMediaManager = camera.mediaManager
+                mMediaManager?.let { mediaManager ->
+
                     //refreshing the MediaManager's file list using the connected DJI product's SD card
                     mediaManager.refreshFileListOfStorageLocation(
                         SettingsDefinitions.StorageLocation.SDCARD //file storage location
@@ -312,54 +418,76 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                                 "BANANAPIE",
                                 "obtained media data from SD card (FlightPlanActivity)"
                             )
+                            //updating the mediaFileList using the now refreshed MediaManager's file list
+                            mediaManager.sdCardFileListSnapshot?.let { listOfMedia ->
+                                mediaFileList = listOfMedia
+                            }
+                            if (mediaFileList.isEmpty()) {
+                                Log.d("BANANAPIE", "SD card is empty, there's nothing to clear")
+                                mLoadingDialog.dismiss()
+                                mapTouch = true
+                            } else {
+                                deleteOneFileFromList()
+                            }
                         } else {
                             Log.d(
                                 "BANANAPIE",
                                 "could not obtain media data from SD card (FlightPlanActivity)"
                             )
-                        }
-                        //updating the mediaFileList using the now refreshed MediaManager's file list
-                        mediaManager.sdCardFileListSnapshot?.let { listOfMedia ->
-                            mediaFileList = listOfMedia
+                            updateMediaFileList()
                         }
 
-                        val delayTime =
-                            (mediaFileList.size * 2000).toLong() //assuming each stored image takes 2 seconds to delete
-
-                        if (mediaFileList.isEmpty()) {
-                            Log.d("BANANAPIE", "SD card is empty, there's nothing to clear")
-                        } else {
-                            mediaManager.deleteFiles(
-                                mediaFileList,
-                                object :
-                                    CommonCallbacks.CompletionCallbackWithTwoParam<List<MediaFile?>?, DJICameraError?> {
-                                    //if the deletion from the SD card is successful...
-                                    override fun onSuccess(
-                                        x: List<MediaFile?>?,
-                                        y: DJICameraError?
-                                    ) {
-                                        Log.d("BANANAPIE", "cleared SD card successfully")
-
-                                        //remove the deleted file from the mediaFileList
-                                        mediaFileList.clear()
-                                    }
-
-                                    //if the deletion from the SD card failed, alert the user
-                                    override fun onFailure(error: DJIError) {
-                                        Log.d("BANANAPIE", "failed to clear SD card")
-                                    }
-                                })
-                        }
-
-                        val handler = Handler(Looper.getMainLooper())
-                        handler.postDelayed({
-                            mLoadingDialog.dismiss()
-                        }, delayTime)
                     }
                 }
             }
     }
 
+    private fun clearSDCard() {
+        Log.d("BANANAPIE", "attempting to clear SD card")
+
+        DJIDemoApplication.getCameraInstance()
+            ?.let { camera ->
+                mMediaManager = camera.mediaManager
+                mMediaManager?.let { mediaManager ->
+
+                    //refreshing the MediaManager's file list using the connected DJI product's SD card
+                    mediaManager.refreshFileListOfStorageLocation(
+                        SettingsDefinitions.StorageLocation.SDCARD //file storage location
+                    ) { djiError -> //checking the callback error
+
+                        if (djiError == null) {
+                            Log.d(
+                                "BANANAPIE",
+                                "obtained media data from SD card (FlightPlanActivity) - 1"
+                            )
+                            mLoadingDialog.show(this.supportFragmentManager, "tagCanBeWhatever")
+
+                            //updating the mediaFileList using the now refreshed MediaManager's file list
+                            mediaManager.sdCardFileListSnapshot?.let { listOfMedia ->
+                                numOfOldPhotos = listOfMedia.size
+                            }
+                            if (numOfOldPhotos != 0){
+                                updateMediaFileList()
+                            }
+                            else{
+                                Log.d("BANANAPIE", "SD card is empty, there's nothing to clear")
+                                mLoadingDialog.dismiss()
+                                mapTouch = true
+                            }
+
+                        } else {
+                            Log.d(
+                                "BANANAPIE",
+                                "could not obtain media data from SD card (FlightPlanActivity)"
+                            )
+                            showToast(this, "could not obtain media data from SD card")
+                            mapTouch = true
+                        }
+                    }
+                }
+            }
+
+    }
 
     //Function that initializes the display for the videoSurface TextureView
     private fun initPreviewer() {
@@ -374,7 +502,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             videoSurface.surfaceTextureListener = this
             if (product.model != Model.UNKNOWN_AIRCRAFT) {
                 VideoFeeder.getInstance().primaryVideoFeed.addVideoDataListener(
-                    viewModel.receivedVideoDataListener
+                    vM.receivedVideoDataListener
                 )
             }
         }
@@ -382,7 +510,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
     private fun initUI() {
 
-        mLoadingDialog = LoadingDialog("Clearing SD card...")
+        mLoadingDialog = DownloadDialog("Clearing SD card...")
         mLoadingDialog.isCancelable = false
 
         startFlightBtn = findViewById(R.id.start_flight_button)
@@ -399,7 +527,6 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         videoView = findViewById(R.id.video_view)
 
         videoSurface = findViewById(R.id.video_previewer_surface)
-        detectorView = findViewById(R.id.detectorView)
         cameraBtn = findViewById(R.id.camera_button)
 
 
@@ -407,7 +534,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         //The videoSurface will then display the surface texture, which in this case is a camera video stream.
         videoSurface.surfaceTextureListener = this
         //TODO change this to implement SDKManager or something better
-        viewModel.aircraft = DJIDemoApplication.getProductInstance() as Aircraft
+        vM.aircraft = DJIDemoApplication.getProductInstance() as Aircraft
 
         locateBtn.setOnClickListener(this)
         getStartedBtn.setOnClickListener(this)
@@ -419,20 +546,20 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     }
 
     private fun cameraUpdate() {
-        if (viewModel.droneLocation.latitude.isNaN() || viewModel.droneLocation.longitude.isNaN()) {
+        if (vM.droneLocation.latitude.isNaN() || vM.droneLocation.longitude.isNaN()) {
             return
         }
-        val pos = LatLng(viewModel.droneLocation.latitude, viewModel.droneLocation.longitude)
+        val pos = LatLng(vM.droneLocation.latitude, vM.droneLocation.longitude)
         val zoomLevel = 18.0
         val cameraUpdate = CameraUpdateFactory.newLatLngZoom(pos, zoomLevel)
         runOnUiThread {
-            viewModel.mbMap?.moveCamera(cameraUpdate)
+            vM.mbMap?.moveCamera(cameraUpdate)
         }
     }
 
     private fun configureFlightPlan(symbol: Symbol) {
 
-        viewModel.symbols.add(symbol)
+        vM.symbols.add(symbol)
 
         val point = symbol.latLng
         var minDistanceIndex = -1
@@ -440,17 +567,17 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         startFlightBtn.visibility = View.GONE
 
-        if (viewModel.polygonCoordinates.size < 3) { // Only Draw Area of Flight Plan
-            viewModel.polygonCoordinates.add(point)
+        if (vM.polygonCoordinates.size < 3) { // Only Draw Area of Flight Plan
+            vM.polygonCoordinates.add(point)
             updatePoly()
         } else { // Draw Area and Configure Flight Plan
             var minDistance = Double.MAX_VALUE
 
-            for (i in viewModel.polygonCoordinates.indices) {
+            for (i in vM.polygonCoordinates.indices) {
                 // place new coordinate in list such that the distance between it and the line segment
                 // created by its neighbouring coordinates are minimized
 
-                nextIndex = if (i == viewModel.polygonCoordinates.size - 1) {
+                nextIndex = if (i == vM.polygonCoordinates.size - 1) {
                     0
                 } else {
                     i + 1
@@ -458,8 +585,8 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
                 val distance: Double =
                     distanceToSegment(
-                        viewModel.polygonCoordinates[i],
-                        viewModel.polygonCoordinates[nextIndex],
+                        vM.polygonCoordinates[i],
+                        vM.polygonCoordinates[nextIndex],
                         point
                     )
 
@@ -469,7 +596,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                 }
             }
 
-            viewModel.polygonCoordinates.add(minDistanceIndex, point)
+            vM.polygonCoordinates.add(minDistanceIndex, point)
             updatePoly()
 
             try {
@@ -483,10 +610,10 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
     private fun drawFlightPlan() {
 
-        viewModel.symbolManager.removeDragListener(symbolDragListener) // prevents infinite loop
+        vM.symbolManager.removeDragListener(symbolDragListener) // prevents infinite loop
 
 
-        if (viewModel.polygonCoordinates.size < 3) return
+        if (vM.polygonCoordinates.size < 3) return
 
         startFlightBtn.visibility = View.VISIBLE
 
@@ -495,7 +622,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         var maxLat = Int.MIN_VALUE.toDouble()
         var maxLon = Int.MIN_VALUE.toDouble()
 
-        for (c in viewModel.polygonCoordinates) {
+        for (c in vM.polygonCoordinates) {
             if (c.latitude < minLat) minLat = c.latitude
             if (c.latitude > maxLat) maxLat = c.latitude
             if (c.longitude < minLon) minLon = c.longitude
@@ -511,45 +638,45 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         try {
 
-            viewModel.flightPlan =
+            vM.flightPlan =
                 FlightPlanner.createFlightPlan(
                     newPoints,
-                    60.0f,
-                    viewModel.polygonCoordinates
+                    35.0f,
+                    vM.polygonCoordinates
                 ) // get plan
 
-            viewModel.flightPlanLine?.let { line -> // delete on plan on map and reset arrays
-                viewModel.lineManager.delete(line)
-                viewModel.symbolManager.delete(viewModel.flightPathSymbols)
-                viewModel.flightPlan2D.clear()
-                viewModel.flightPathSymbols.clear()
+            vM.flightPlanLine?.let { line -> // delete on plan on map and reset arrays
+                vM.lineManager.delete(line)
+                vM.symbolManager.delete(vM.flightPathSymbols)
+                vM.flightPlan2D.clear()
+                vM.flightPathSymbols.clear()
             }
 
-            for (coordinate in viewModel.flightPlan) { // populate new plan and place markers on map
-                viewModel.flightPlan2D.add(
+            for (coordinate in vM.flightPlan) { // populate new plan and place markers on map
+                vM.flightPlan2D.add(
                     LocationCoordinate2D(
                         coordinate.latitude,
                         coordinate.longitude
                     )
                 )
 
-                val flightPathSymbol: Symbol = viewModel.symbolManager.create(
+                val flightPathSymbol: Symbol = vM.symbolManager.create(
                     SymbolOptions()
                         .withLatLng(LatLng(coordinate))
                         .withIconImage("ic_waypoint_marker_unvisited")
                         .withIconSize(0.5f)
                 )
 
-                viewModel.flightPathSymbols.add(flightPathSymbol)
+                vM.flightPathSymbols.add(flightPathSymbol)
             }
 
 
             val lineOptions: LineOptions = LineOptions()
-                .withLatLngs(viewModel.flightPlan)
+                .withLatLngs(vM.flightPlan)
                 .withLineWidth(2.0f)
                 .withLineColor(PropertyFactory.fillColor(Color.parseColor("#FFFFFF")).value)
 
-            viewModel.flightPlanLine = viewModel.lineManager.create(lineOptions)
+            vM.flightPlanLine = vM.lineManager.create(lineOptions)
 
         } catch (e: FlightPlanner.NotEnoughPointsException) {
 
@@ -563,7 +690,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             e.printStackTrace()
         }
 
-        viewModel.symbolManager.addDragListener(symbolDragListener)
+        vM.symbolManager.addDragListener(symbolDragListener)
     }
 
     private fun checkGpsCoordination(latitude: Double, longitude: Double): Boolean {
@@ -573,50 +700,50 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     // Redraw polygons fill after having changed the container values.
     private fun updatePoly() {
 
-        val polygonCoordinatesCopy: MutableList<LatLng> = ArrayList(viewModel.polygonCoordinates)
-        polygonCoordinatesCopy.add(viewModel.polygonCoordinates[0])
+        val polygonCoordinatesCopy: MutableList<LatLng> = ArrayList(vM.polygonCoordinates)
+        polygonCoordinatesCopy.add(vM.polygonCoordinates[0])
 
-        viewModel.line?.let { viewModel.lineManager.delete(it) }
+        vM.line?.let { vM.lineManager.delete(it) }
 
         val lineOpts: LineOptions = LineOptions()
             .withLineColor(PropertyFactory.lineColor("#FFFFFF").value)
             .withLatLngs(polygonCoordinatesCopy)
 
-        viewModel.line = viewModel.lineManager.create(lineOpts)
+        vM.line = vM.lineManager.create(lineOpts)
 
         val fillCoordinates: MutableList<List<LatLng>> = ArrayList()
         fillCoordinates.add(polygonCoordinatesCopy)
 
-        viewModel.fill?.let { viewModel.fillManager.delete(it) }
+        vM.fill?.let { vM.fillManager.delete(it) }
 
         val fillOpts: FillOptions = FillOptions()
             .withFillColor(PropertyFactory.fillColor(Color.parseColor("#81FFFFFF")).value)
             .withLatLngs(fillCoordinates)
 
-        viewModel.fill = viewModel.fillManager.create(fillOpts)
+        vM.fill = vM.fillManager.create(fillOpts)
     }
 
     private fun updateDroneLocation() {
         runOnUiThread {
 
-            if (viewModel.droneLocation.latitude.isNaN() || viewModel.droneLocation.longitude.isNaN()) {
+            if (vM.droneLocation.latitude.isNaN() || vM.droneLocation.longitude.isNaN()) {
                 return@runOnUiThread
             }
 
             if (checkGpsCoordination(
-                    viewModel.droneLocation.latitude,
-                    viewModel.droneLocation.longitude
+                    vM.droneLocation.latitude,
+                    vM.droneLocation.longitude
                 )
             ) {
 
                 val pos =
-                    LatLng(viewModel.droneLocation.latitude, viewModel.droneLocation.longitude)
+                    LatLng(vM.droneLocation.latitude, vM.droneLocation.longitude)
 
-                viewModel.droneSymbol?.let { drone ->
-                    viewModel.symbolManager.delete(drone)
+                vM.droneSymbol?.let { drone ->
+                    vM.symbolManager.delete(drone)
                 }
 
-                viewModel.droneSymbol = viewModel.symbolManager.create(
+                vM.droneSymbol = vM.symbolManager.create(
                     SymbolOptions()
                         .withLatLng(pos)
                         .withIconImage("ic_drone")
@@ -641,37 +768,108 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     }
 
     private fun clearMapViews() {
-        if (viewModel.symbols.size > 0) {
-            viewModel.symbolManager.delete(viewModel.symbols)
+        if (vM.symbols.size > 0) {
+            vM.symbolManager.delete(vM.symbols)
         }
 
-        if (viewModel.flightPathSymbols.size > 0) {
-            viewModel.symbolManager.delete(viewModel.flightPathSymbols)
+        if (vM.flightPathSymbols.size > 0) {
+            vM.symbolManager.delete(vM.flightPathSymbols)
         }
 
-        if (viewModel.flightPlanLine != null) {
-            viewModel.lineManager.delete(viewModel.flightPlanLine)
+        if (vM.flightPlanLine != null) {
+            vM.lineManager.delete(vM.flightPlanLine)
         }
 
-        viewModel.fillManager.delete(viewModel.fill)
-        viewModel.lineManager.delete(viewModel.line)
+        vM.fillManager.delete(vM.fill)
+        vM.lineManager.delete(vM.line)
 
-        viewModel.symbols.clear()
-        viewModel.polygonCoordinates.clear()
-        viewModel.flightPlan2D.clear()
+        vM.symbols.clear()
+        vM.polygonCoordinates.clear()
+        vM.flightPlan2D.clear()
     }
 
     //When a TextureView's SurfaceTexture is ready for use, use it to initialize the codecManager
+    @RequiresApi(Build.VERSION_CODES.Q)
     override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-        if (viewModel.codecManager == null) {
-            viewModel.codecManager = DJICodecManager(this, surface, width, height)
+        if (vM.codecManager == null) {
+            vM.codecManager = DJICodecManager(this, surface, width, height)
+        }
+
+        val textSizePx = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            vM.TEXT_SIZE_DIP,
+            resources.displayMetrics
+        )
+        vM.borderedText = BorderedText(textSizePx)
+        vM.borderedText!!.setTypeface(Typeface.MONOSPACE)
+
+        vM.tracker = MultiBoxTracker(this)
+
+        val cropSize: Int =
+            vM.TF_OD_API_INPUT_SIZE
+
+        try {
+            vM.detector = YoloV4Classifier.create(
+                assets,
+                vM.TF_OD_API_MODEL_FILE,
+                vM.TF_OD_API_LABELS_FILE,
+                vM.TF_OD_API_IS_QUANTIZED
+            )
+        } catch (e: IOException) {
+            e.printStackTrace()
+            Log.e(
+                "BANANAPIE",
+                "Exception initializing classifier!"
+            )
+            Toast.makeText(
+                applicationContext, "Classifier could not be initialized", Toast.LENGTH_SHORT
+            ).show()
+            finish()
+        }
+
+        vM.previewWidth = width
+        vM.previewHeight = height
+        Log.d("BANANAPIE", "RGB FRAME BITMAP DIMENSIONS: ${vM.previewWidth} x ${vM.previewHeight}")
+
+        vM.sensorOrientation = 0
+        vM.croppedBitmap = Bitmap.createBitmap(cropSize, cropSize, Bitmap.Config.ARGB_8888)
+
+        vM.cropToFrameTransform = ImageUtils.getTransformationMatrix(
+            cropSize,
+            cropSize,
+            vM.previewWidth,
+            vM.previewHeight,
+            vM.sensorOrientation,
+            vM.MAINTAIN_ASPECT
+        )
+
+        trackingOverlay = findViewById(R.id.tracking_overlay)
+        trackingOverlay.addCallback(
+            object : OverlayView.DrawCallback {
+                override fun drawCallback(canvas: Canvas?) {
+                    if (canvas != null) {
+                        vM.tracker!!.draw(canvas)
+                    }
+                }
+            })
+
+        vM.tracker!!.setFrameConfiguration(
+            vM.previewWidth,
+            vM.previewHeight,
+            vM.sensorOrientation
+        )
+
+        lifecycleScope.launch(Dispatchers.Default){
+            while (true){
+                videoSurface.bitmap?.let {
+                    runObjectDetection(it)
+                }
+            }
         }
     }
 
     //When a SurfaceTexture is updated
     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
-//        Log.d("BANANAPIE", "NEW FRAME AVAILABLE ${videoSurface.bitmap}")
-        videoSurface.bitmap?.let { runObjectDetection(it) }
     }
 
     //when a SurfaceTexture's size changes
@@ -679,9 +877,8 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
     //when a SurfaceTexture is about to be destroyed, uninitialized the codedManager
     override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
-        viewModel.codecManager?.cleanSurface()
-        viewModel.codecManager = null
-
+        vM.codecManager?.cleanSurface()
+        vM.codecManager = null
         return false
     }
 
@@ -689,106 +886,54 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
      * runObjectDetection(bitmap: Bitmap)
      *      TFLite Object Detection function
      */
-    private fun runObjectDetection(bitmap: Bitmap) {
-        // Step 1: create TFLite's TensorImage object
-        val image = InputImage.fromBitmap(bitmap, 0)
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun runObjectDetection(bitmap: Bitmap) {//change this to bmp to run the code below
 
-        // Step 2: Initialize the detector object
-        val localModel = LocalModel.Builder()
-            .setAssetFilePath("model.tflite")
-            .build()
+//        var bitmap = Utils.getBitmapFromAsset(applicationContext, "bmp.jpg")
+        //invalidate the overlay so that it is immediately ready to be drawn on
+        runOnUiThread{
+            trackingOverlay.postInvalidate()
 
-        val customObjectDetectorOptions =
-            CustomObjectDetectorOptions.Builder(localModel)
-                .setDetectorMode(CustomObjectDetectorOptions.STREAM_MODE)
-                .setClassificationConfidenceThreshold(0.5f)
-                .setMaxPerObjectLabelCount(1)
-                .build()
+            vM.croppedBitmap = Bitmap.createScaledBitmap(bitmap, 416, 416, false)
 
-        val detector =
-            ObjectDetection.getClient(customObjectDetectorOptions)
+            // For examining the actual TF input.
+            if (vM.SAVE_PREVIEW_BITMAP) {
+                vM.croppedBitmap?.let { ImageUtils.saveBitmap(it, "photo", applicationContext) }
+            }
+        }
 
-        // Step 3: feed given image to the model and print the detection result
-        detector
-            .process(image)
-            .addOnFailureListener {}
-            .addOnSuccessListener { results ->
-                val resultToDisplay = results.map{
-                    for(detectedObject in results){
-                        val boundingBox = detectedObject.boundingBox
-                        for (label in detectedObject.labels) {
-                            val text = label.text
-                            val index = label.index
-                            val confidence = label.confidence
-                        }
-                    }
+        val startTime = SystemClock.uptimeMillis()
+        vM.results = vM.detector.recognizeImage(vM.croppedBitmap) as MutableList<Classifier.Recognition>?
+        Log.e("BANANAPIE", "run: " + (vM.results)?.size)
+        vM.lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime
+
+        runOnUiThread{
+            val paint = Paint()
+            paint.color = Color.RED
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 2.0f
+
+            val canvas = Canvas(bitmap)
+
+            val minimumConfidence: Float = vM.MINIMUM_CONFIDENCE_TF_OD_API
+
+            val mappedRecognitions: MutableList<Classifier.Recognition> =
+                LinkedList<Classifier.Recognition>()
+            for (result in vM.results!!) {
+                val location: RectF = result.location
+                if (result.confidence!! >= minimumConfidence) {
+                    canvas.drawRect(location, paint)
+                    vM.cropToFrameTransform?.mapRect(location)
+                    result.location = location
+                    mappedRecognitions.add(result)
                 }
             }
-
-        // Step 4: Parse the detection result and show it
-//        debugPrint(results)
-        val resultToDisplay = results.map {
-            // Get the top-1 category and craft the display text
-            val category = it.categories.first()
-            val text = "${category.label}, ${category.score.times(100).toInt()}%"
-
-            // Create a data object to display the detection result
-            DetectionResult(it.boundingBox, text)
+            vM.tracker?.trackResults(mappedRecognitions, vM.results!!.size.toLong())
+            trackingOverlay.postInvalidate()
+            Log.d("BANANAPIE", "${vM.lastProcessingTimeMs} ms")
         }
-        // Draw the detection result on the bitmap and show it.
-        val imgWithResult = drawDetectionResult(bitmap, resultToDisplay)
-        runOnUiThread {
-            detectorView.setImageBitmap(imgWithResult)
-        }
+
     }
 
-
-    private fun drawDetectionResult(
-        bitmap: Bitmap,
-        detectionResults: List<DetectionResult>
-    ): Bitmap {
-        val outputBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-        val canvas = Canvas(outputBitmap)
-        val pen = Paint()
-        pen.textAlign = Paint.Align.LEFT
-
-        detectionResults.forEach {
-            // draw bounding box
-            pen.color = Color.RED
-            pen.strokeWidth = 8F
-            pen.style = Paint.Style.STROKE
-            val box = it.boundingBox
-            canvas.drawRect(box, pen)
-
-
-            val tagSize = Rect(0, 0, 0, 0)
-
-            // calculate the right font size
-            pen.style = Paint.Style.FILL_AND_STROKE
-            pen.color = Color.YELLOW
-            pen.strokeWidth = 2F
-
-            pen.textSize = 96F
-            pen.getTextBounds(it.text, 0, it.text.length, tagSize)
-            val fontSize: Float = pen.textSize * box.width() / tagSize.width()
-
-            // adjust the font size so texts are inside the bounding box
-            if (fontSize < pen.textSize) pen.textSize = fontSize
-
-            var margin = (box.width() - tagSize.width()) / 2.0F
-            if (margin < 0F) margin = 0F
-            canvas.drawText(
-                it.text, box.left + margin,
-                box.top + tagSize.height().times(1F), pen
-            )
-        }
-        return outputBitmap
-    }
-
-    /**
-     * DetectionResult
-     *      A class to store the visualization info of a detected object.
-     */
-    data class DetectionResult(val boundingBox: RectF, val text: String)
 
 }

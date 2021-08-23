@@ -3,6 +3,8 @@ package com.dji.droneparking.util
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.LiveData
@@ -25,6 +27,7 @@ import dji.common.mission.waypoint.WaypointMissionState
 import dji.common.model.LocationCoordinate2D
 import dji.common.util.CommonCallbacks
 import dji.sdk.camera.Camera
+import dji.sdk.mission.waypoint.WaypointMissionOperator
 import dji.sdk.mission.waypoint.WaypointMissionOperatorListener
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -133,20 +136,30 @@ class MavicMiniMissionOperator(context: Context) {
         // Setting the camera capture mode to SINGLE, and then taking a photo using the camera.
         // If the resulting callback for each operation returns an error that is null, then the two operations are successful.
         val photoMode = SettingsDefinitions.ShootPhotoMode.SINGLE
+
+        pauseMission()
+
         camera.setShootPhotoMode(photoMode) { djiError ->
             if (djiError == null) {
                 activity.lifecycleScope.launch {
                     camera.startShootPhoto { djiErrorSecond ->
                         if (djiErrorSecond == null) {
-                            Log.i("STATUS", "take photo: success")
+                            Log.d("BANANAPIE", "take photo: success")
+                            showToast(activity, "take photo: success")
+
                         } else {
-                            Log.i("STATUS", "Take Photo Failure: ${djiError?.description}")
+                            Log.d("BANANAPIE", "Take Photo Failure: ${djiError?.description}")
+                            showToast(activity, "Take Photo Failure: ${djiError?.description}")
                         }
                     }
                 }
             }
         }
 
+        val handler = Handler(Looper.getMainLooper())
+        handler.postDelayed({
+            Log.d("BANANAPIE", "waiting 2 sec")
+        }, 2000)
     }
 
 
@@ -160,6 +173,14 @@ class MavicMiniMissionOperator(context: Context) {
             this.waypoints = mission.waypointList
             this.state = WaypointMissionState.READY_TO_UPLOAD
             null
+        }
+    }
+
+    fun pauseMission(){
+        if (this.state == WaypointMissionState.EXECUTING){
+            Log.d("BANANAPIE", "trying to pause")
+            WaypointMissionOperator().pauseMission {
+            }
         }
     }
 
@@ -188,7 +209,22 @@ class MavicMiniMissionOperator(context: Context) {
                         if (error == null) {
                             callback?.onResult(null)
                             this.state = WaypointMissionState.READY_TO_EXECUTE
-                            executeMission()
+
+                            getCameraInstance()?.setMode(SettingsDefinitions.CameraMode.SHOOT_PHOTO) { error ->
+                                if (error == null) {
+                                    showToast(activity, "Switch Camera Mode Succeeded")
+                                    Log.d("BANANAPIE", "Switch Camera Mode Succeeded")
+                                } else {
+                                    showToast(activity, "Switch Camera Error: ${error.description}")
+                                }
+                            }
+
+                            val handler = Handler(Looper.getMainLooper())
+                            handler.postDelayed({
+                                executeMission()
+                            }, 8000)
+
+
                         } else {
                             callback?.onResult(error)
                         }
@@ -240,16 +276,6 @@ class MavicMiniMissionOperator(context: Context) {
         state = WaypointMissionState.EXECUTION_STARTING
         operatorListener?.onExecutionStart()
 
-        val camera: Camera = getCameraInstance() ?: return
-
-        camera.setMode(SettingsDefinitions.CameraMode.SHOOT_PHOTO) { error ->
-            if (error == null) {
-                showToast(activity, "Switch Camera Mode Succeeded")
-            } else {
-                showToast(activity, "Switch Camera Error: ${error.description}")
-            }
-        }
-
         //running the execution in a coroutine to prevent blocking the main thread
         activity.lifecycleScope.launch {
             withContext(Dispatchers.Main) {
@@ -275,7 +301,7 @@ class MavicMiniMissionOperator(context: Context) {
 
                     //If the drone has arrived at the destination, take a photo.
                     if (!photoTakenToggle && (distanceToWaypoint < 1.5)) {//if you haven't taken a photo
-                        Log.d("BANANAPIE", "PHOTO TAKEN SUCCESSFULLY")
+                        Log.d("BANANAPIE", "attempting to take photo")
                         takePhoto()
                         photoTakenToggle = true
                     } else if (photoTakenToggle && (distanceToWaypoint > 1.5)) {
@@ -396,7 +422,7 @@ class MavicMiniMissionOperator(context: Context) {
         if (!isLanding) {
             showToast(activity, "trying to land")
         }
-        DJIDemoApplication.getFlightController()?.startLanding(callback)
+        DJIDemoApplication.getFlightController()?.startGoHome(callback)
 
     }
 

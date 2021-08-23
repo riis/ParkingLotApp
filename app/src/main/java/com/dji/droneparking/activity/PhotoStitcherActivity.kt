@@ -11,6 +11,7 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.dji.droneparking.R
 import com.dji.droneparking.dialog.DownloadDialog
 import com.dji.droneparking.dialog.LoadingDialog
@@ -425,9 +426,12 @@ class PhotoStitcherActivity : AppCompatActivity(), View.OnClickListener{
 
         val files = photoStorageDir.listFiles()
         for (file in files){
+
             if (file.name.endsWith(".jpg") || file.name.endsWith(".png")){
                 val bitmap = BitmapFactory.decodeFile(file.absolutePath)
-                downloadedImageList.add(bitmap)
+                val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 800, 450, false)
+
+                downloadedImageList.add(resizedBitmap)
             }
         }
         return downloadedImageList
@@ -479,16 +483,19 @@ class PhotoStitcherActivity : AppCompatActivity(), View.OnClickListener{
                     StitchRequester.StitchMessage.STITCH_START_SUCCESS.value -> {
                         Log.d("STITCH", "Requesting upload start")
                         photoStitchProgressBar.visibility = View.VISIBLE
-                        requester.addImages(getDownloadedImagesList())
+                        for (image in getDownloadedImagesList()){ //mediaFileList
+                            requester.addImage(image) //image.thumbnail
+                        }
                     }
                     StitchRequester.StitchMessage.STITCH_IMAGE_ADD_FAILURE.value -> {
-                        Log.d("STITCH", "failed to upload image to server, moving on...")
-                        imageUploadCount++
+                        Log.d("STITCH", "failed to upload image to server, retrying...")
+                        requester.addImage(getDownloadedImagesList()[imageUploadCount-1]) // mediaFileList[imageUploadCount-1].thumbnail
+                        /*imageUploadCount++
                         if(imageUploadCount == mediaFileList.size) {
                             val str =  "Locking stitch..."
                             photoStitchProgressTextView.text = str
                             requester.lockBatch()
-                        }
+                        }*/
                     }
                     StitchRequester.StitchMessage.STITCH_IMAGE_ADD_SUCCESS.value -> {
                         Log.d("STITCH", "successfully uploaded image to server, moving on...")
