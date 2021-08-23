@@ -179,6 +179,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 //            lifecycleScope.async(Dispatchers.Default){runObjectDetection(BitmapFactory.decodeByteArray(videoBuffer, 0, videoBuffer.size))}
 //            Log.d("BANANAPIE", "new frame")
         }
+        showClearMemoryDialog()
     }
 
     override fun onMapReady(mapboxMap: MapboxMap) {
@@ -283,6 +284,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             R.id.cancel_flight_button -> {
                 vM.manager?.stopFlight() ?: return
                 clearMapViews()
+                mapTouch = true
                 layoutCancelPlan.visibility = View.GONE
             }
             R.id.cancel_flight_plan_button -> {
@@ -336,7 +338,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             .setMessage(R.string.ensure_clear_sd)
             .setCancelable(false)
             .setTitle(R.string.title_clear_sd)
-            .setNegativeButton(R.string.no, null)
+            .setNegativeButton(R.string.no) { _, _ -> mapTouch = true }
             .setPositiveButton(R.string.yes) { _, _ ->
 
                 clearSDCard()
