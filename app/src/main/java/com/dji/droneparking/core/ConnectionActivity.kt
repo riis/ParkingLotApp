@@ -18,7 +18,7 @@ class ConnectionActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setTheme(R.style.Theme_DroneParking)
         setContentView(R.layout.activity_connection)
-        this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
 
         ActivityCompat.requestPermissions(
             this,
