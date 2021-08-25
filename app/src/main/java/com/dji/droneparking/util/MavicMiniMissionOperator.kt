@@ -23,6 +23,7 @@ import dji.common.gimbal.RotationMode
 import dji.common.mission.MissionState
 import dji.common.mission.waypoint.Waypoint
 import dji.common.mission.waypoint.WaypointMission
+import dji.common.mission.waypoint.WaypointMissionExecutionEvent
 import dji.common.mission.waypoint.WaypointMissionState
 import dji.common.model.LocationCoordinate2D
 import dji.common.util.CommonCallbacks
@@ -45,6 +46,7 @@ class MavicMiniMissionOperator(context: Context) {
     private var isLanding: Boolean = false
     private var isLanded: Boolean = false
     private var isAirborne: Boolean = false
+    private var photoIsSuccess: Boolean = false
     private val activity: AppCompatActivity
     private val mContext = context
 
@@ -130,36 +132,35 @@ class MavicMiniMissionOperator(context: Context) {
     }
 
     //Function for taking a a single photo using the DJI Product's camera
-    private fun takePhoto() {
-        val camera: Camera = getCameraInstance() ?: return
+    private fun takePhoto(): Boolean {
+        val camera: Camera = getCameraInstance() ?: return false
 
         // Setting the camera capture mode to SINGLE, and then taking a photo using the camera.
         // If the resulting callback for each operation returns an error that is null, then the two operations are successful.
         val photoMode = SettingsDefinitions.ShootPhotoMode.SINGLE
 
-        pauseMission()
+//        pauseMission()
 
         camera.setShootPhotoMode(photoMode) { djiError ->
             if (djiError == null) {
-                activity.lifecycleScope.launch {
-                    camera.startShootPhoto { djiErrorSecond ->
-                        if (djiErrorSecond == null) {
-                            Log.d("BANANAPIE", "take photo: success")
-                            showToast(activity, "take photo: success")
-
-                        } else {
-                            Log.d("BANANAPIE", "Take Photo Failure: ${djiError?.description}")
-                            showToast(activity, "Take Photo Failure: ${djiError?.description}")
-                        }
+                camera.startShootPhoto { djiErrorSecond ->
+                    if (djiErrorSecond == null) {
+                        Log.d("BANANAPIE", "take photo: success")
+                        showToast(activity, "take photo: success")
+                        this.state = WaypointMissionState.EXECUTING
+                        this.photoIsSuccess = true
+                    } else {
+                        Log.d("BANANAPIE", "Take Photo Failure: ${djiError?.description}")
+                        this.state = WaypointMissionState.EXECUTION_PAUSED
+                        this.photoIsSuccess = false
                     }
                 }
             }
         }
 
-        val handler = Handler(Looper.getMainLooper())
-        handler.postDelayed({
-            Log.d("BANANAPIE", "waiting 2 sec")
-        }, 2000)
+        Log.d("BANANAPIE", "PHOTO IS SUCCESS?: ${this.photoIsSuccess}")
+
+        return this.photoIsSuccess
     }
 
 
@@ -176,11 +177,12 @@ class MavicMiniMissionOperator(context: Context) {
         }
     }
 
-    fun pauseMission(){
+    private fun pauseMission(){
         if (this.state == WaypointMissionState.EXECUTING){
             Log.d("BANANAPIE", "trying to pause")
-            WaypointMissionOperator().pauseMission {
-            }
+//            WaypointMissionOperator().pauseMission {
+//            }
+            this.state = WaypointMissionState.EXECUTION_PAUSED
         }
     }
 
@@ -299,13 +301,15 @@ class MavicMiniMissionOperator(context: Context) {
                         )
                     )
 
-                    //If the drone has arrived at the destination, take a photo.
-                    if (!photoTakenToggle && (distanceToWaypoint < 1.5)) {//if you haven't taken a photo
-                        Log.d("BANANAPIE", "attempting to take photo")
-                        takePhoto()
-                        photoTakenToggle = true
-                    } else if (photoTakenToggle && (distanceToWaypoint > 1.5)) {
-                        photoTakenToggle = false
+                    if (!isLanded && !isLanding) {
+                        //If the drone has arrived at the destination, take a photo.
+                        if (!photoTakenToggle && (distanceToWaypoint < 1.5)) {//if you haven't taken a photo
+                            photoTakenToggle = takePhoto()
+                            Log.d("BANANAPIE", "attempting to take photo: $photoTakenToggle, $photoIsSuccess")
+                        } else if (photoTakenToggle && (distanceToWaypoint >= 1.5)) {
+                            photoTakenToggle = false
+                            photoIsSuccess = false
+                        }
                     }
 
                     val longitudeDiff =
@@ -374,6 +378,7 @@ class MavicMiniMissionOperator(context: Context) {
                         } else { //If all waypoints have been reached, stop the mission
                             state = WaypointMissionState.EXECUTION_STOPPING
                             operatorListener?.onExecutionFinish(null)
+
                             stopMission(null)
                             isLanding = true
                             sendDataTimer.cancel()
@@ -382,8 +387,14 @@ class MavicMiniMissionOperator(context: Context) {
 
                         sendDataTimer.cancel() //cancel all scheduled data tasks
                     } else {
-                        directions.altitude = currentWaypoint.altitude
+                        // checking for pause state
+                        if (state == WaypointMissionState.EXECUTING) {
+                            directions.altitude = currentWaypoint.altitude
+                        } else if (state == WaypointMissionState.EXECUTION_PAUSED){
+                            directions = Direction(0f, 0f, 0f, currentWaypoint.altitude)
+                        }
                         move(directions)
+
                     }
 
                     if (isLanding && currentLocation.altitude == 0f) {
