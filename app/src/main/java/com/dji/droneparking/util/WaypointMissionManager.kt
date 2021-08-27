@@ -1,9 +1,12 @@
 package com.dji.droneparking.util
 
+import android.content.Context
 import android.os.Handler
 import android.util.Log
 import android.widget.TextView
+import android.widget.Toast
 import com.dji.droneparking.core.FlightPlanActivity
+import com.dji.droneparking.core.MapViewFragment
 import dji.common.error.DJIError
 import dji.common.mission.waypoint.WaypointMission
 import dji.common.mission.waypoint.WaypointMissionDownloadEvent
@@ -13,10 +16,11 @@ import dji.sdk.mission.waypoint.WaypointMissionOperatorListener
 
 class WaypointMissionManager(
     private val mission: WaypointMission, private val operator: MavicMiniMissionOperator,
-    t: TextView, act: FlightPlanActivity
+    c: Context, act: MapViewFragment
 ) {
-    private val toEdit: TextView = t
-    private val runningIn: FlightPlanActivity = act
+    private val context = c
+//    private val toEdit: TextView = t
+    private val runningIn: MapViewFragment = act
     private var flightStopped = false
 
     fun startMission() {
@@ -91,7 +95,8 @@ class WaypointMissionManager(
 
     private fun updateToast(msg: String) {
         try {
-            toEdit.text = msg
+//            toEdit.text = msg
+            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
             e.printStackTrace()
         }

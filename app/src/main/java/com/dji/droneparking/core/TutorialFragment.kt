@@ -1,21 +1,18 @@
 package com.dji.droneparking.core
 
+import android.content.Intent
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.Fragment
 import com.dji.droneparking.R
-import android.content.pm.ActivityInfo
-
-import android.app.Activity
-import android.content.Intent
-import android.widget.Button
+import com.ncorti.slidetoact.SlideToActView
 
 
-class TutorialFragment : Fragment() {
+class TutorialFragment : Fragment(), SlideToActView.OnSlideCompleteListener {
 
-    private lateinit var getStartedButton : Button
+    private lateinit var getStartedButton: SlideToActView
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -25,7 +22,7 @@ class TutorialFragment : Fragment() {
 
         val view = inflater.inflate(R.layout.fragment_tutorial, container, false)
 
-        getStartedButton = view.findViewById(R.id.get_started_button)
+        getStartedButton = view.findViewById(R.id.get_started_button) as SlideToActView
 
         return view
     }
@@ -33,12 +30,12 @@ class TutorialFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        getStartedButton.setOnClickListener{
-
-//            showClearMemoryDialog()
-
-            val intent = Intent(activity, FlightPlanActivity::class.java)
-            startActivity(intent)
-        }
+        getStartedButton.onSlideCompleteListener = this
     }
+
+    override fun onSlideComplete(view: SlideToActView) {
+        val intent = Intent(activity, FlightPlanActivity::class.java)
+        startActivity(intent)
+    }
+
 }

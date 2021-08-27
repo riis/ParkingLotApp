@@ -88,7 +88,8 @@ class FlightPlanActivityViewModel : ViewModel() {
 
     var manager: WaypointMissionManager? = null
     var operator: MavicMiniMissionOperator? = null
-    lateinit var droneLocation: LocationCoordinate3D
+    var droneLocation: LocationCoordinate3D = LocationCoordinate3D(10.0, 10.0, 0f)
+    var altitudeHolder: LocationCoordinate3D= LocationCoordinate3D(10.0, 10.0, 0f)
     var located = false
 
     private var operatorInstance: MavicMiniMissionOperator? = null

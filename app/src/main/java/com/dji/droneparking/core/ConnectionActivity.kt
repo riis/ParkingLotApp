@@ -35,7 +35,8 @@ class ConnectionActivity : AppCompatActivity() {
                 Manifest.permission.MOUNT_UNMOUNT_FILESYSTEMS,
                 Manifest.permission.READ_EXTERNAL_STORAGE,
                 Manifest.permission.SYSTEM_ALERT_WINDOW,
-                Manifest.permission.READ_PHONE_STATE
+                Manifest.permission.READ_PHONE_STATE,
+                Manifest.permission.VIBRATE
             ), 1
         )
 
@@ -54,6 +55,10 @@ class ConnectionActivity : AppCompatActivity() {
         supportFragmentManager.beginTransaction()
             .add(R.id.frameLayoutFragment, connectionFragment, "connection").commit()
 
+        //SNIPPET BELOW IS FOR TESTING
+//        val tutorialFragment = TutorialFragment()
+//        supportFragmentManager.beginTransaction()
+//            .replace(R.id.frameLayoutFragment, tutorialFragment).commit()
 
     }
 }

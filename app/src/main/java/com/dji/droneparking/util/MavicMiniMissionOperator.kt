@@ -126,7 +126,6 @@ class MavicMiniMissionOperator(context: Context) {
 
     //Gets an instance of the MavicMiniMissionOperator class and gives this activity's context as input
     private fun getPhotoStitcher() {
-
         val intent = Intent(mContext, PhotoStitcherActivity::class.java)
         mContext.startActivity(intent)
     }
