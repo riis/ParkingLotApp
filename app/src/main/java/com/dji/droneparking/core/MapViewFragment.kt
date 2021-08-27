@@ -396,7 +396,7 @@ class MapViewFragment : Fragment(), OnMapReadyCallback,
         var minDistanceIndex = -1
         var nextIndex: Int
 
-//        startFlightBtn.visibility = View.GONE
+        startFlightBtn.visibility = View.GONE
 
         if (vM.polygonCoordinates.size < 3) { // Only Draw Area of Flight Plan
             vM.polygonCoordinates.add(point)
@@ -588,7 +588,7 @@ class MapViewFragment : Fragment(), OnMapReadyCallback,
     fun animateNextButton() {
         activity?.runOnUiThread {
             takeoffWidget.visibility = View.VISIBLE
-//            cancelFlightBtn.visibility = View.INVISIBLE
+            cancelFlightBtn.visibility = View.INVISIBLE
             clearMapViews()
         }
     }
