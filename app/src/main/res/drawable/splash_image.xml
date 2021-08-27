@@ -4,4 +4,5 @@
     <item android:drawable="@color/white"/>
     <!--Add the logo that you want to display and its gravity to centre-->
     <item android:drawable="@drawable/logo" android:gravity="center"/>
+
 </layer-list>

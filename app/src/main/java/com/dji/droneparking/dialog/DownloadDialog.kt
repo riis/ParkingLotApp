@@ -23,7 +23,6 @@ class DownloadDialog(val text: String) : DialogFragment() {
     //---------------------
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         _binding = DownloadDialogBinding.inflate(LayoutInflater.from(context))
-        Log.d("BANANAPIE", binding.toString())
 
         val builder = AlertDialog.Builder(requireActivity())
         builder.setView(binding.root)

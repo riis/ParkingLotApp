@@ -13,7 +13,7 @@ import java.util.*
 
 object FlightPlanner {
     /// The maximum speed the drone is allowed to fly while executing the flight plan
-    private const val MAX_FLIGHT_SPEED = 5.0f
+    private const val MAX_FLIGHT_SPEED = 2.5f
 
     /// The base automatic flight speed for the plan
     private const val AUTO_FLIGHT_SPEED = 3.0f

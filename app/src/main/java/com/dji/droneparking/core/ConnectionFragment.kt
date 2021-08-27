@@ -73,6 +73,7 @@ class ConnectionFragment : Fragment() {
 //                ?.replace(R.id.frameLayoutFragment, tutorialFragment, "tutorial")?.commit()
 //
 //            job?.cancel()
+            //activity?.supportFragmentManager?.beginTransaction()?.replace(R.id.frameLayoutFragment, tutorialFragment, "tutorial")?.commit() //remove later
 
             while (true) {
                 if (!model.rCConnected) {

@@ -6,10 +6,12 @@ import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
+import com.dji.droneparking.R
 import com.dji.droneparking.core.PhotoStitcherActivity
 import com.dji.droneparking.util.DJIDemoApplication.getCameraInstance
 import com.dji.droneparking.util.Tools.showToast
@@ -37,6 +39,7 @@ import java.util.*
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sqrt
+import kotlin.system.measureTimeMillis
 
 
 private const val TAG = "MavicMiniMissionOperator"
@@ -122,13 +125,6 @@ class MavicMiniMissionOperator(context: Context) {
             currentGimbalPitch = gimbalState.attitudeInDegrees.pitch
             gimbalPitchLiveData.postValue(currentGimbalPitch)
         }
-    }
-
-    //Gets an instance of the MavicMiniMissionOperator class and gives this activity's context as input
-    private fun getPhotoStitcher() {
-
-        val intent = Intent(mContext, PhotoStitcherActivity::class.java)
-        mContext.startActivity(intent)
     }
 
     //Function for taking a a single photo using the DJI Product's camera
@@ -237,6 +233,30 @@ class MavicMiniMissionOperator(context: Context) {
         } else {
             callback?.onResult(DJIMissionError.FAILED)
         }
+    }
+
+    private fun showDownloadPhotosDialog() {
+        val dialog = AlertDialog.Builder(mContext)
+            .setMessage(R.string.ensure_download_from_SD_Card)
+            .setCancelable(false)
+            .setTitle(R.string.title_download_photos)
+            .setNegativeButton(R.string.no) { _, _ -> }
+            .setPositiveButton(R.string.yes) { _, _ ->
+                val t  = measureTimeMillis {
+                    getPhotoStitcher()
+                }
+                Log.d("BANANAPIE", "downloaded files from SD card in $t ms")
+            }
+            .create()
+
+        dialog.show()
+    }
+
+    private fun getPhotoStitcher() {
+        val intent = Intent(activity, PhotoStitcherActivity::class.java)
+        intent.putExtra("directlyDownloadFromSD", true)
+        activity.startActivity(intent)
+
     }
 
     private fun rotateGimbalDown() {
@@ -401,7 +421,7 @@ class MavicMiniMissionOperator(context: Context) {
                         if (!isLanded) {
                             sendDataTimer.cancel()
                             isLanded = true
-                            getPhotoStitcher()
+                            showDownloadPhotosDialog()
                         }
 
                     }

@@ -2,6 +2,7 @@ package com.dji.droneparking.core
 
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.*
 import android.os.*
 import android.util.Log
@@ -71,6 +72,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var layoutCancelPlan: LinearLayout
     private lateinit var startFlightBtn: Button
     private lateinit var locateBtn: Button
+    private lateinit var photosBtn: Button
     private lateinit var takeoffWidget: TakeOffWidget
     private lateinit var mContext: Context
     private lateinit var cameraBtn: Button
@@ -258,6 +260,11 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 //                cameraBtn.visibility = View.VISIBLE
 //                showClearMemoryDialog()
 //            }
+
+            R.id.photos_button -> {
+                getPhotoStitcher()
+            }
+
             R.id.start_flight_button -> {
                 when (vM.aircraft) {
                     null -> {
@@ -335,17 +342,20 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
     }
 
+
     private fun showClearMemoryDialog() {
         val dialog = AlertDialog.Builder(this)
             .setMessage(R.string.ensure_clear_sd)
             .setCancelable(false)
             .setTitle(R.string.title_clear_sd)
-            .setNegativeButton(R.string.no) { _, _ -> mapTouch = true }
+            .setNegativeButton(R.string.no) { _, _ -> mapTouch = true  }
             .setPositiveButton(R.string.yes) { _, _ ->
+
                 val t  = measureTimeMillis {
                     clearSDCard()
                 }
                 Log.d("BANANAPIE", "SD card cleared in $t ms")
+
             }
             .create()
 
@@ -378,11 +388,20 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                                     )
                                     mLoadingDialog.dismiss()
                                     mapTouch = true
+
                                 } else {
                                     Log.d(
                                         "BANANAPIE",
                                         "SD Card clear error: $DJIError"
                                     )
+                                    if (DJIError.toString() == "Not supported(255)"){
+                                        showToast(this, "SD Card clear error: $DJIError. Restart Drone.")
+                                    }
+                                    else{
+                                        showToast(this, "SD Card clear error: $DJIError")
+                                    }
+
+                                    mLoadingDialog.dismiss()
                                 }
                             }
                         } else {
@@ -390,10 +409,16 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                                 "BANANAPIE",
                                 "could not obtain media data from SD card (FlightPlanActivity)"
                             )
+                            showToast(this, "could not obtain media data from SD card.\n.Check to see if SD card is available.")
                         }
                     }
                 }
             }
+    }
+
+    private fun getPhotoStitcher() {
+        val intent = Intent(this, PhotoStitcherActivity::class.java)
+        this.startActivity(intent)
     }
 
     //Function that initializes the display for the videoSurface TextureView
@@ -423,6 +448,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         startFlightBtn = findViewById(R.id.start_flight_button)
         cancelFlightBtn = findViewById(R.id.cancel_flight_button)
         locateBtn = findViewById(R.id.locate_button)
+        photosBtn = findViewById(R.id.photos_button)
         val cancelFlightPlanBtn: Button = findViewById(R.id.cancel_flight_plan_button)
 
         takeoffWidget = findViewById(R.id.takeoff_widget_flight_plan)
@@ -440,9 +466,10 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         //The videoSurface will then display the surface texture, which in this case is a camera video stream.
         videoSurface.surfaceTextureListener = this
         //TODO change this to implement SDKManager or something better
-        vM.aircraft = DJIDemoApplication.getProductInstance() as Aircraft
+        vM.aircraft = DJIDemoApplication.getProductInstance() as Aircraft?
 
         locateBtn.setOnClickListener(this)
+        photosBtn.setOnClickListener(this)
 //        getStartedBtn.setOnClickListener(this)
         startFlightBtn.setOnClickListener(this)
         cancelFlightPlanBtn.setOnClickListener(this)

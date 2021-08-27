@@ -9,8 +9,9 @@
         android:id="@+id/textView3"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="PhotoStitcher Activity"
-        android:textColor="@color/white"
+        android:text="PHOTOS"
+        android:textColor="@color/black"
+        android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -19,42 +20,106 @@
         android:id="@+id/photos_recycler_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_marginHorizontal="30dp"
         android:layout_marginTop="30dp"
         android:layout_marginBottom="45dp"
-        android:layout_marginHorizontal="30dp"
-        android:background="@color/blue"
-
+        android:background="@color/black"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textView3" />
 
+
     <ImageView
         android:id="@+id/stitched_image_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_marginHorizontal="30dp"
         android:layout_marginTop="30dp"
         android:layout_marginBottom="45dp"
-        android:layout_marginHorizontal="30dp"
+        android:background="@color/white"
+        android:scaleType="fitCenter"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView3"
-        android:background="@color/purple_200"
-        android:visibility="gone">
+        app:layout_constraintTop_toBottomOf="@+id/textView3">
 
     </ImageView>
+
+    <LinearLayout
+        android:id="@+id/download_buttons_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="@+id/photos_recycler_view"
+        app:layout_constraintEnd_toEndOf="@+id/photos_recycler_view"
+        app:layout_constraintStart_toStartOf="@+id/photos_recycler_view"
+        app:layout_constraintTop_toTopOf="@+id/photos_recycler_view"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="Download from:"
+            android:textColor="@color/white"></TextView>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/download_sd_card_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="5dp"
+                android:text="SD Card"
+                android:textColor="@color/black"
+                ></Button>
+
+            <Button
+                android:id="@+id/download_other_missions_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="5dp"
+                android:text="Other Missions"
+                android:textColor="@color/black"
+                ></Button>
+
+        </LinearLayout>
+
+
+    </LinearLayout>
+
+
 
     <Button
         android:id="@+id/stitch_images_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Stitch Images"
+        android:text="@string/stitch_images"
+        android:visibility="gone"
+        android:backgroundTint="@color/black"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="@+id/photos_recycler_view"
         app:layout_constraintTop_toBottomOf="@+id/photos_recycler_view"
-        app:layout_constraintVertical_bias="1.0"
-        android:visibility="gone">
+        app:layout_constraintVertical_bias="1.0">
+
+    </Button>
+
+    <Button
+        android:id="@+id/download_stitch_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/download"
+        android:backgroundTint="@color/black"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/photos_recycler_view"
+        app:layout_constraintTop_toBottomOf="@+id/photos_recycler_view"
+        app:layout_constraintVertical_bias="1.0">
 
     </Button>
 
@@ -63,13 +128,13 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/photo_stitching_progress_text"
-        android:textColor="@color/white"
+        android:textColor="@color/black"
         android:textStyle="bold"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/photos_recycler_view"
-        android:visibility="gone">
+        app:layout_constraintTop_toBottomOf="@+id/photos_recycler_view">
 
     </TextView>
 
@@ -77,11 +142,12 @@
         android:id="@+id/photo_stitch_progress_bar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:indeterminateTint="@color/black"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/photo_stitch_progress_text_view"
         app:layout_constraintTop_toBottomOf="@+id/photos_recycler_view"
-        app:layout_constraintVertical_bias="1.0"
-        android:visibility="gone">
+        app:layout_constraintVertical_bias="1.0">
 
     </ProgressBar>
 
