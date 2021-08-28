@@ -13,13 +13,7 @@ import android.view.TextureView
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
-import android.widget.*
-import androidx.activity.viewModels
-import androidx.annotation.RequiresApi
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.cardview.widget.CardView
-import androidx.lifecycle.lifecycleScope
 import com.dji.droneparking.R
 import com.dji.droneparking.customview.OverlayView
 import com.dji.droneparking.dialog.LoadingDialog
@@ -36,7 +30,7 @@ import com.mapbox.mapboxsdk.camera.CameraPosition
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
 import com.mapbox.mapboxsdk.geometry.LatLng
 import com.mapbox.mapboxsdk.maps.*
-import com.mapbox.mapboxsdk.plugins.annotation.*
+import com.mapbox.mapboxsdk.plugins.annotation.*New
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory
 import com.riis.cattlecounter.util.distanceToSegment
 import dji.common.camera.SettingsDefinitions
@@ -771,120 +765,10 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             Log.e(
                 "BANANAPIE",
                 "Exception initializing classifier!"
+
             )
-            Toast.makeText(
-                applicationContext, "Classifier could not be initialized", Toast.LENGTH_SHORT
-            ).show()
-            finish()
-        }
-
-        vM.previewWidth = width
-        vM.previewHeight = height
-        Log.d("BANANAPIE", "RGB FRAME BITMAP DIMENSIONS: ${vM.previewWidth} x ${vM.previewHeight}")
-
-        vM.sensorOrientation = 0
-        vM.croppedBitmap = Bitmap.createBitmap(cropSize, cropSize, Bitmap.Config.ARGB_8888)
-
-        vM.cropToFrameTransform = ImageUtils.getTransformationMatrix(
-            cropSize,
-            cropSize,
-            vM.previewWidth,
-            vM.previewHeight,
-            vM.sensorOrientation,
-            vM.MAINTAIN_ASPECT
-        )
-
-        trackingOverlay = findViewById(R.id.tracking_overlay)
-        trackingOverlay.addCallback(
-            object : OverlayView.DrawCallback {
-                override fun drawCallback(canvas: Canvas?) {
-                    if (canvas != null) {
-                        vM.tracker!!.draw(canvas)
-                    }
-                }
-            })
-
-        vM.tracker!!.setFrameConfiguration(
-            vM.previewWidth,
-            vM.previewHeight,
-            vM.sensorOrientation
-        )
-
-        lifecycleScope.launch(Dispatchers.Default){
-            while (true){
-                videoSurface.bitmap?.let {
-                    runObjectDetection(it)
-                }
-            }
-        }
-    }
-
-    //When a SurfaceTexture is updated
-    override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
-    }
-
-    //when a SurfaceTexture's size changes
-    override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
-
-    //when a SurfaceTexture is about to be destroyed, uninitialized the codedManager
-    override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
-        vM.codecManager?.cleanSurface()
-        vM.codecManager = null
-        return false
-    }
-
-    /**
-     * runObjectDetection(bitmap: Bitmap)
-     *      TFLite Object Detection function
-     */
-    @RequiresApi(Build.VERSION_CODES.Q)
-    private fun runObjectDetection(bitmap: Bitmap) {//change this to bmp to run the code below
-
-//        var bitmap = Utils.getBitmapFromAsset(applicationContext, "bmp.jpg")
-        //invalidate the overlay so that it is immediately ready to be drawn on
-        runOnUiThread{
-            trackingOverlay.postInvalidate()
-
-            vM.croppedBitmap = Bitmap.createScaledBitmap(bitmap, 416, 416, false)
-
-            // For examining the actual TF input.
-            if (vM.SAVE_PREVIEW_BITMAP) {
-                vM.croppedBitmap?.let { ImageUtils.saveBitmap(it, "photo", applicationContext) }
-            }
-        }
-
-        val startTime = SystemClock.uptimeMillis()
-        vM.results = vM.detector.recognizeImage(vM.croppedBitmap) as MutableList<Classifier.Recognition>?
-        Log.e("BANANAPIE", "run: " + (vM.results)?.size)
-        vM.lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime
-
-        runOnUiThread{
-            val paint = Paint()
-            paint.color = Color.RED
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 2.0f
-
-            val canvas = Canvas(bitmap)
-
-            val minimumConfidence: Float = vM.MINIMUM_CONFIDENCE_TF_OD_API
-
-            val mappedRecognitions: MutableList<Classifier.Recognition> =
-                LinkedList<Classifier.Recognition>()
-            for (result in vM.results!!) {
-                val location: RectF = result.location
-                if (result.confidence!! >= minimumConfidence) {
-                    canvas.drawRect(location, paint)
-                    vM.cropToFrameTransform?.mapRect(location)
-                    result.location = location
-                    mappedRecognitions.add(result)
-                }
-            }
-            vM.tracker?.trackResults(mappedRecognitions, vM.results!!.size.toLong())
-            trackingOverlay.postInvalidate()
-            Log.d("BANANAPIE", "${vM.lastProcessingTimeMs} ms")
         }
 
     }
-
 
 }

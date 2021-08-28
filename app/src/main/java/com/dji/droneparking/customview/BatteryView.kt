@@ -30,6 +30,7 @@ class BatteryView @JvmOverloads constructor(
         defStyle: Int = 0
 ) :
         BatteryWidget(context, attrs, defStyle) {
+
     private var waveView:WaveView? = null
     private var batteryIconErrorRes = 0
 
