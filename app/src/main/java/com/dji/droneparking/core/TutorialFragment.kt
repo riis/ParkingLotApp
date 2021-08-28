@@ -10,7 +10,9 @@ import androidx.fragment.app.Fragment
 import com.dji.droneparking.R
 import com.ncorti.slidetoact.SlideToActView
 
+
 class TutorialFragment : Fragment(), SlideToActView.OnSlideCompleteListener {
+
     private lateinit var getStartedButton: SlideToActView
 
     override fun onCreateView(

@@ -97,7 +97,6 @@ class WaveView @JvmOverloads constructor(
                 targetRect.centerX().toFloat()-5,
                 baseline.toFloat()+50f,
                 textPaint!!
-
         )
         textPaint!!.textSize = 30F
     }
@@ -112,7 +111,6 @@ class WaveView @JvmOverloads constructor(
         statusColor = if (textProgress > 50){
             Color.GREEN
         }else if(textProgress <= 50 && textProgress > 20){
-
             Color.rgb(255, 165, 0)//ORANGE
         }else{
             Color.RED
@@ -136,7 +134,6 @@ class WaveView @JvmOverloads constructor(
                         (startPoint.y - amplitude).toFloat(),
                         endX.toFloat(),
                         startPoint.y.toFloat()
-
                 )
             }
         }
