@@ -84,8 +84,14 @@ class WaypointMissionManager(
 
     fun stopFlight() {
         flightStopped = true
-        operator.stopMission(null)
-        updateToast("Flight cancelled.")
+        operator.stopMission { djiError: DJIError? ->
+            if (djiError != null) {
+                updateToast("Could not cancel flight!")
+                Log.e("MISSION_FAILED", "Could not cancel mission: " + djiError.description)
+                return@stopMission
+            }
+            updateToast("Flight cancelled.")
+        }
     }
 
     private fun updateToast(msg: String) {
