@@ -5,6 +5,7 @@ import android.util.Log
 import android.widget.TextView
 import com.dji.droneparking.core.FlightPlanActivity
 import dji.common.error.DJIError
+import dji.common.error.DJIMissionError
 import dji.common.mission.waypoint.WaypointMission
 import dji.common.mission.waypoint.WaypointMissionDownloadEvent
 import dji.common.mission.waypoint.WaypointMissionExecutionEvent
@@ -65,7 +66,7 @@ class WaypointMissionManager(
         operator.startMission { djiError: DJIError? ->
             Log.d(TAG, "beginMissiononResultdjiError: $djiError")
             if (djiError != null) {
-                updateToast("Something went wrong, check GPS.!")
+                updateToast("Something went wrong (possible overheat). Please restart drone!")
                 Log.e(
                     "MISSION_FAILED",
                     "Mission completion failed: " + djiError.description

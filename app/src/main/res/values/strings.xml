@@ -33,7 +33,7 @@
     <string name="compass_value">compass value</string>
     <string name="align">align</string>
     <string name="welcome">Welcome to Car Counter</string>
-    <string name="overlay_text">Tap on the map to place vertices to define a polygon, then \npress \'Create Flight Plan\' to calculate a path for the drone.</string>
+    <string name="overlay_text">Tap on the map to place vertices to define a polygon, then \npress \'Create Flight Plan\' to create a flight path for the drone.</string>
     <string name="get_started">Get Started</string>
     <string name="camera">camera</string>
     <string name="map">map</string>

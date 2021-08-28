@@ -2,6 +2,8 @@ package com.dji.droneparking.core
 
 
 import android.content.Context
+import android.content.DialogInterface.BUTTON_NEGATIVE
+import android.content.DialogInterface.BUTTON_POSITIVE
 import android.content.Intent
 import android.graphics.*
 import android.os.*
@@ -9,6 +11,7 @@ import android.util.Log
 import android.util.TypedValue
 import android.view.TextureView
 import android.view.View
+import android.view.WindowInsets
 import android.view.WindowManager
 import android.widget.*
 import androidx.activity.viewModels
@@ -19,7 +22,6 @@ import androidx.cardview.widget.CardView
 import androidx.lifecycle.lifecycleScope
 import com.dji.droneparking.R
 import com.dji.droneparking.customview.OverlayView
-import com.dji.droneparking.dialog.DownloadDialog
 import com.dji.droneparking.dialog.LoadingDialog
 import com.dji.droneparking.environment.BorderedText
 import com.dji.droneparking.environment.ImageUtils
@@ -52,6 +54,7 @@ import dji.sdk.gimbal.Gimbal
 import dji.sdk.media.MediaFile
 import dji.sdk.media.MediaManager
 import dji.sdk.products.Aircraft
+import dji.ux.widget.ReturnHomeWidget
 import dji.ux.widget.TakeOffWidget
 import kotlinx.coroutines.*
 import java.io.IOException
@@ -67,19 +70,22 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     private var mapTouch: Boolean = false
 
     private lateinit var cancelFlightBtn: Button
-//    private lateinit var overlayView: LinearLayout
+    private lateinit var altitudeTV: TextView
     private lateinit var layoutConfirmPlan: LinearLayout
     private lateinit var layoutCancelPlan: LinearLayout
     private lateinit var startFlightBtn: Button
     private lateinit var locateBtn: Button
     private lateinit var photosBtn: Button
     private lateinit var takeoffWidget: TakeOffWidget
+    private lateinit var returnHomeWidget: ReturnHomeWidget
     private lateinit var mContext: Context
     private lateinit var cameraBtn: Button
+    private lateinit var mapBtn: Button
     private lateinit var videoSurface: TextureView
     private lateinit var videoView: CardView
     private lateinit var gimbal: Gimbal
     private lateinit var trackingOverlay: OverlayView
+    private lateinit var statusCard: CardView
 
     private lateinit var mLoadingDialog: LoadingDialog
 
@@ -108,47 +114,22 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setTheme(R.style.Theme_DroneParking)
         operator = vM.getWaypointMissionOperator(this)
-
-//        vM.options = ObjectDetector.ObjectDetectorOptions
-//            .builder()
-//            .setNumThreads(2)
-//            .setMaxResults(5)
-//            .setScoreThreshold(0.5f)
-//            .build()
-
-//        vM.detector = ObjectDetector.createFromFileAndOptions(
-//            this, // the application context
-//            "model.tflite", // must be same as the filename in assets folder
-//            vM.options
-//        )
-
-
-//        val rotation = Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).pitch(-90f).build()
-//        try {
-//            gimbal = DJISDKManager.getInstance().product.gimbal
-//
-//            gimbal.rotate(
-//                rotation
-//            ) { djiError ->
-//                if (djiError == null) {
-//                    Log.d("BANANAPIE", "rotate gimbal success")
-//                    Toast.makeText(applicationContext, "rotate gimbal success", Toast.LENGTH_SHORT)
-//                        .show()
-//                } else {
-//                    Log.d("BANANAPIE", "rotate gimbal error " + djiError.description)
-//                    Toast.makeText(applicationContext, djiError.description, Toast.LENGTH_SHORT)
-//                        .show()
-//                }
-//            }
-//        } catch (e: Exception) {
-//            Log.d("BANANAPIE", "Drone is likely not connected")
-//        }
-
 
         setContentView(R.layout.activity_flight_plan_mapbox)
 
         initUI()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.insetsController?.hide(WindowInsets.Type.statusBars())
+        } else {
+            @Suppress("DEPRECATION")
+            window.setFlags(
+                    WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                    WindowManager.LayoutParams.FLAG_FULLSCREEN
+            )
+        }
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         mContext = applicationContext
@@ -162,6 +143,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
 
         operator.droneLocationLiveData.observe(this, { location ->
+            altitudeTV.text = "${"%.1f".format(location.altitude)}\nm"
 
             if (vM.styleReady) {
 
@@ -242,24 +224,13 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
     }
 
+    @RequiresApi(Build.VERSION_CODES.M)
     override fun onClick(v: View?) {
         when (v?.id) {
             R.id.locate_button -> {
                 updateDroneLocation()
                 cameraUpdate()
             }
-//            R.id.get_started_button -> {
-////                overlayView.animate()
-////                    .alpha(0.0f)
-////                    .translationXBy(1000f)
-////                    .setDuration(500)
-////                    .setListener(null)
-////                    .start()
-//
-//                locateBtn.visibility = View.VISIBLE
-//                cameraBtn.visibility = View.VISIBLE
-//                showClearMemoryDialog()
-//            }
 
             R.id.photos_button -> {
                 getPhotoStitcher()
@@ -275,6 +246,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
                         val djiMission: WaypointMission =
                             FlightPlanner.createFlightMissionFromCoordinates(vM.flightPlan2D)
+
 
                         vM.manager = WaypointMissionManager(
                             djiMission,
@@ -306,13 +278,51 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                 if (vM.isCameraShowing) {
                     videoView.visibility = View.VISIBLE
                     locateBtn.visibility = View.GONE
-                    cameraBtn.text = getString(R.string.map)
+                    photosBtn.visibility = View.GONE
+                    cameraBtn.visibility = View.GONE
+                    mapBtn.visibility = View.VISIBLE
+                    statusCard.visibility = View.GONE
+                    takeoffWidget.visibility = View.GONE
+                    returnHomeWidget.visibility = View.GONE
+
 
                 } else {
                     videoView.visibility = View.GONE
                     locateBtn.visibility = View.VISIBLE
-                    cameraBtn.text = getString(R.string.camera)
+                    photosBtn.visibility = View.VISIBLE
+                    cameraBtn.visibility = View.VISIBLE
+                    mapBtn.visibility = View.GONE
+                    statusCard.visibility = View.VISIBLE
+                    takeoffWidget.visibility = View.VISIBLE
+                    returnHomeWidget.visibility = View.VISIBLE
+
                 }
+            }
+            R.id.map_button -> {
+                vM.isCameraShowing = !vM.isCameraShowing
+
+                if (vM.isCameraShowing) {
+                    videoView.visibility = View.VISIBLE
+                    locateBtn.visibility = View.GONE
+                    photosBtn.visibility = View.GONE
+                    cameraBtn.visibility = View.GONE
+                    mapBtn.visibility = View.VISIBLE
+                    statusCard.visibility = View.GONE
+                    takeoffWidget.visibility = View.GONE
+                    returnHomeWidget.visibility = View.GONE
+
+
+                } else {
+                    videoView.visibility = View.GONE
+                    locateBtn.visibility = View.VISIBLE
+                    photosBtn.visibility = View.VISIBLE
+                    cameraBtn.visibility = View.VISIBLE
+                    mapBtn.visibility = View.GONE
+                    statusCard.visibility = View.VISIBLE
+                    takeoffWidget.visibility = View.VISIBLE
+                    returnHomeWidget.visibility = View.VISIBLE
+                }
+
             }
         }
     }
@@ -360,6 +370,8 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             .create()
 
         dialog.show()
+        dialog.getButton(BUTTON_POSITIVE).setTextColor(resources.getColor(R.color.green))
+        dialog.getButton(BUTTON_NEGATIVE).setTextColor(resources.getColor(R.color.red))
     }
 
     private fun clearSDCard() {
@@ -445,13 +457,18 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         mLoadingDialog = LoadingDialog("Clearing SD card...")
         mLoadingDialog.isCancelable = false
 
+        statusCard = findViewById(R.id.status_card)
+        altitudeTV = findViewById(R.id.altitudeTV)
+
         startFlightBtn = findViewById(R.id.start_flight_button)
         cancelFlightBtn = findViewById(R.id.cancel_flight_button)
         locateBtn = findViewById(R.id.locate_button)
         photosBtn = findViewById(R.id.photos_button)
+        mapBtn = findViewById(R.id.map_button)
         val cancelFlightPlanBtn: Button = findViewById(R.id.cancel_flight_plan_button)
 
         takeoffWidget = findViewById(R.id.takeoff_widget_flight_plan)
+        returnHomeWidget = findViewById(R.id.return_home_widget)
         layoutConfirmPlan = findViewById(R.id.ll_confirm_flight_plan)
         layoutCancelPlan = findViewById(R.id.ll_cancel_flight_plan)
 
@@ -470,11 +487,12 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
         locateBtn.setOnClickListener(this)
         photosBtn.setOnClickListener(this)
-//        getStartedBtn.setOnClickListener(this)
+
         startFlightBtn.setOnClickListener(this)
         cancelFlightPlanBtn.setOnClickListener(this)
         cancelFlightBtn.setOnClickListener(this)
         cameraBtn.setOnClickListener(this)
+        mapBtn.setOnClickListener(this)
 
     }
 

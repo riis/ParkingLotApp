@@ -85,6 +85,9 @@ class PhotoDownloader(mContext: Context) {
         //If there is no DJI product connected to the mobile device...
         if (DJIDemoApplication.getProductInstance() == null) {
             Log.d("BANANAPIE", "Product disconnected")
+            activity.runOnUiThread {
+                showToast("Drone is not connected")
+            }
             return
 
             //If there is a DJI product connected to the mobile device...
@@ -165,6 +168,11 @@ class PhotoDownloader(mContext: Context) {
                             //updating the recycler view's mediaFileList using the now refreshed MediaManager's file list
                             mediaManager.sdCardFileListSnapshot?.let { listOfMedia ->
                                 mediaFileList = listOfMedia
+                                if (mediaFileList.isEmpty()){
+                                    activity.runOnUiThread {
+                                        showToast("SD Card is empty")
+                                    }
+                                }
                             }
 
                             //sort the files in the mediaFileList by descending order based on the time each media file was created.

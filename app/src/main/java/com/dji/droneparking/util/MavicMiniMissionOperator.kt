@@ -2,6 +2,7 @@ package com.dji.droneparking.util
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
@@ -250,6 +251,8 @@ class MavicMiniMissionOperator(context: Context) {
             .create()
 
         dialog.show()
+        dialog.getButton(DialogInterface.BUTTON_POSITIVE).setTextColor(activity.resources.getColor(R.color.green))
+        dialog.getButton(DialogInterface.BUTTON_NEGATIVE).setTextColor(activity.resources.getColor(R.color.red))
     }
 
     private fun getPhotoStitcher() {
