@@ -10,16 +10,20 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.dji.droneparking.R
 
-
+/**
+ * This is the first activity in the app. Its purpose is to host ConnectionFragment.kt upon startup
+ * and request app permissions.
+ */
 class ConnectionActivity : AppCompatActivity() {
 
-
+    //Creating the activity
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setTheme(R.style.Theme_DroneParking)
         setContentView(R.layout.activity_connection)
         this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
 
+        //Requesting the user for app permissions
         ActivityCompat.requestPermissions(
             this,
             arrayOf(
@@ -39,21 +43,22 @@ class ConnectionActivity : AppCompatActivity() {
             ), 1
         )
 
-
+        //if the current build version is at least API level 30 (Android 11), hide the phone's status bar.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.insetsController?.hide(WindowInsets.Type.statusBars())
         } else {
             @Suppress("DEPRECATION")
+            //forcing the activity to show as full screen
             window.setFlags(
                 WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN
             )
         }
 
+        //creating and displaying connectionFragment.kt
         val connectionFragment = ConnectionFragment()
         supportFragmentManager.beginTransaction()
             .add(R.id.frameLayoutFragment, connectionFragment, "connection").commit()
-
-
     }
+
 }

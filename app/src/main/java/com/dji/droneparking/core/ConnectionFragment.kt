@@ -16,19 +16,26 @@ import com.dji.droneparking.viewmodel.ConnectionViewModel
 import dji.sdk.sdkmanager.DJISDKManager
 import kotlinx.coroutines.*
 
+/**
+* Hosted by ConnectionActivity, this is the first view the user will be able to see. Its purpose is to
+ * ensure that the DJI RC controller is connected to the user's mobile device and the DJI drone is connected
+ * to the RC controller before navigating to TutorialFragment.kt.
+ **/
 class ConnectionFragment : Fragment() {
+    //UI Variables
     private lateinit var mTextConnectionStatus: TextView
-//    private lateinit var mBtnOpen: Button
     private lateinit var mVersionTv: TextView
     private lateinit var animFadeIn: Animation
     private lateinit var animFadeOut: Animation
 
+    //viewModel used for SDK registration, and listening to product connectivity and hardware changes
     private val model: ConnectionViewModel by viewModels()
 
     companion object {
         const val TAG = "ConnectionActivity"
     }
 
+    //creating the fragment view from the fragment_connection.xml layout
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -37,44 +44,38 @@ class ConnectionFragment : Fragment() {
         return inflater.inflate(R.layout.fragment_connection, container, false)
     }
 
+    //initializing UI elements and observers, and registering the app with DJI's mobile SDK
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        //Loading animations
         animFadeIn = AnimationUtils.loadAnimation(context, R.anim.fadein)
         animFadeOut = AnimationUtils.loadAnimation(context, R.anim.fadeout)
 
-
+        //referencing layout views using their resource ids
         mTextConnectionStatus = view.findViewById(R.id.text_connection_status)
-//        mBtnOpen = view.findViewById(R.id.btn_open)
         mVersionTv = view.findViewById(R.id.textView2)
 
-
+        //displaying the current DJI mobile SDK version to user
         mVersionTv.text =
             resources.getString(R.string.sdk_version, DJISDKManager.getInstance().sdkVersion)
-//        mBtnOpen.isEnabled = false
-//        mBtnOpen.setOnClickListener {
-//            val intent = Intent(context, FlightPlanActivity::class.java)
-//            this.startActivity(intent)
-//        }
 
         initUI()
         model.registerApp()
         observers()
     }
 
+    //Function used to start displaying the dynamic UI elements
     private fun initUI() {
+        val tutorialFragment = TutorialFragment()
 
-        var flag = false
-        var job : Job? = null
-        job  = lifecycleScope.launch(Dispatchers.IO) {
-//            delay(10000)
-            val tutorialFragment = TutorialFragment()
-//            activity?.supportFragmentManager?.beginTransaction()
-//                ?.replace(R.id.frameLayoutFragment, tutorialFragment, "tutorial")?.commit()
-//
-//            job?.cancel()
-            //activity?.supportFragmentManager?.beginTransaction()?.replace(R.id.frameLayoutFragment, tutorialFragment, "tutorial")?.commit() //remove later
+        //To bypass this fragment and access the rest of the app without connecting to the DJI products, uncomment the line below:
+        //activity?.supportFragmentManager?.beginTransaction()?.replace(R.id.frameLayoutFragment, tutorialFragment, "tutorial")?.commit()
 
+        //Coroutine used to display animations until the DJI drone and RC controller are connected
+        lifecycleScope.launch(Dispatchers.IO) {
+
+            //Looping until the DJI RC controller is connected to the user's mobile device
             while (true) {
                 if (!model.rCConnected) {
                     withContext(Dispatchers.Main) {
@@ -84,16 +85,18 @@ class ConnectionFragment : Fragment() {
                         delay(2000)
                     }
                 } else {
+                    //When connected, break loop and update UI
                     withContext(Dispatchers.Main) {
                         mTextConnectionStatus.setTextColor(Color.GREEN)
                         mTextConnectionStatus.text = "Connected to RC ✓"
                         delay(1000)
                         mTextConnectionStatus.setTextColor(Color.BLACK)
-                        flag = true
                     }
                     break
                 }
             }
+
+            //Looping until the DJI drone is connected to its RC controller
             while (true) {
                 if (!model.droneConnected) {
                     withContext(Dispatchers.Main) {
@@ -104,6 +107,7 @@ class ConnectionFragment : Fragment() {
                         delay(2000)
                     }
                 } else {
+                    //When connected, break loop and update UI
                     withContext(Dispatchers.Main) {
                         mTextConnectionStatus.setTextColor(Color.GREEN)
                         mTextConnectionStatus.text = "Connected to ${model.droneName}  ✓"
@@ -113,33 +117,31 @@ class ConnectionFragment : Fragment() {
                     break
                 }
             }
+
+            //After both DJI products are connected, navigate to tutorialFragment.kt
             activity?.supportFragmentManager?.beginTransaction()
                 ?.replace(R.id.frameLayoutFragment, tutorialFragment, "tutorial")?.commit()
         }
     }
 
+    //Function used to setup observers
     private fun observers() {
-        //this handles connections to the rc controller
+        //Listens to any connection changes to the rc controller and updates UI accordingly
         model.connectionStatus.observe(viewLifecycleOwner, { isConnected ->
             if (isConnected) {
                 mTextConnectionStatus.setTextColor(Color.GREEN)
                 mTextConnectionStatus.text = "Connected to RC ✓"
-//                mTextConnectionStatus.setTextColor(Color.BLACK)
-//                mBtnOpen.isEnabled = true
                 model.rCConnected = true
             } else {
                 mTextConnectionStatus.text = "Connecting to RC"
                 model.rCConnected = false
-//                mBtnOpen.isEnabled = false
             }
         })
 
-        //this handles connection to the drone
+        //Listens to any connection changes to the drone and updates UI accordingly
         model.product.observe(viewLifecycleOwner, { baseProduct ->
             if (baseProduct != null && baseProduct.isConnected) {
-//                mTextConnectionStatus.text = "Connected to Drone ✓"
                 model.droneConnected = true
-//                mTextModelAvailable.text = baseProduct.firmwarePackageVersion
                 model.droneName = baseProduct.model.displayName
             } else {
                 mTextConnectionStatus.text = "Connecting to Drone"
