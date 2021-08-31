@@ -20,7 +20,7 @@ class ConnectionActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setTheme(R.style.Theme_DroneParking)
-        setContentView(R.layout.activity_connection)
+        setContentView(R.layout.activity_connection) //activity layout view is created from activity_fragment.xml
         this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
 
         //Requesting the user for app permissions
@@ -48,7 +48,7 @@ class ConnectionActivity : AppCompatActivity() {
             window.insetsController?.hide(WindowInsets.Type.statusBars())
         } else {
             @Suppress("DEPRECATION")
-            //forcing the activity to show as full screen
+            //Otherwise, force the activity to show as full screen
             window.setFlags(
                 WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN

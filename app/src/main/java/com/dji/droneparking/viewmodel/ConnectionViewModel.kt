@@ -14,7 +14,7 @@ import dji.sdk.sdkmanager.DJISDKManager
 
 /**
  * Utilized by ConnectionFragment.kt, this viewModel is used to register the app with the DJI mobile SDK,
- * store the current drone and RC controller connection statuses, and to listen to any hardware or connectivity changes.
+ * store the current drone and RC controller connection statuses, and to listen to any DJI product hardware or connectivity changes.
  */
 class ConnectionViewModel(application: Application) : AndroidViewModel(application) {
 
