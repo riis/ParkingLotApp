@@ -19,7 +19,8 @@ android {
     sourceSets.main.res.filter.exclude '**/DJIImageDownloader.kt'
 
     defaultConfig {
-        applicationId 'com.riis.livestream'
+//        applicationId 'com.riis.livestream'
+        applicationId 'com.dji.droneparking'
         minSdkVersion 22
         targetSdkVersion 30
         versionCode 1
