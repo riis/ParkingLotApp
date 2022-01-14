@@ -127,9 +127,14 @@ public class YoloV4Classifier implements Classifier {
     public void close() {
     }
 
+    @Override
     public void setNumThreads(int num_threads) {
-        if (tfLite != null) tfLite.setNumThreads(num_threads);
+
     }
+
+//    public void setNumThreads(int num_threads) {
+//        if (tfLite != null) tfLite.setNumThreads(num_threads);
+//    }
 
 //    @Override
 //    public void setUseNNAPI(boolean isChecked) {

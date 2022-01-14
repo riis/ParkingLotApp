@@ -38,7 +38,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/splashScreenTheme">
+        android:theme="@style/splashScreenTheme"
+        android:fullBackupContent="@xml/backup_descriptor">
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
@@ -51,7 +52,7 @@
             android:name=".core.ConnectionActivity"
             android:configChanges="keyboard|keyboardHidden|orientation"
             android:screenOrientation="userLandscape"
-            >
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -82,7 +83,8 @@
             android:label="@string/title_activity_flight_plan"
             android:largeHeap="true"
             android:screenOrientation="userLandscape"
-            android:theme="@style/Theme.AppCompat.NoActionBar">
+            android:theme="@style/Theme.AppCompat.NoActionBar"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
@@ -93,7 +95,8 @@
             android:configChanges="keyboard|keyboardHidden|orientation"
             android:label="photo_stitcher_activity"
             android:screenOrientation="userLandscape"
-            android:theme="@style/Theme.DroneParking">
+            android:theme="@style/Theme.DroneParking"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>

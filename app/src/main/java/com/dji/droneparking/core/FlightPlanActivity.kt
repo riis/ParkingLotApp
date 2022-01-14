@@ -644,7 +644,6 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     //Function used to uninitialize the display for the videoSurface TextureView
     private fun uninitPreviewer() {
         DJIDemoApplication.getCameraInstance() ?: return
-        VideoFeeder.getInstance().primaryVideoFeed.addVideoDataListener(null)
 
     }
 
@@ -783,9 +782,11 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             // ... from the viewModel to the primary video feed.
             videoSurface.surfaceTextureListener = this
             if (product.model != Model.UNKNOWN_AIRCRAFT) {
-                VideoFeeder.getInstance().primaryVideoFeed.addVideoDataListener(
-                    vM.receivedVideoDataListener
-                )
+                vM.receivedVideoDataListener?.let {
+                    VideoFeeder.getInstance().primaryVideoFeed.addVideoDataListener(
+                        it
+                    )
+                }
             }
         }
     }
