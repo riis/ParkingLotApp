@@ -88,6 +88,12 @@ class ConnectionFragment : Fragment() {
                 mTextConnectionStatus.startAnimation(animFadeIn)
                 delay(2000)
             }
+
+            if(rcConnection && droneConnection){
+                //After both DJI products are connected, navigate to tutorialFragment.kt
+                activity?.supportFragmentManager?.beginTransaction()
+                    ?.replace(R.id.frameLayoutFragment, tutorialFragment, "tutorial")?.commit()
+            }
         }
 
         //NOTE: After installation, the app connects to the DJI server via internet and verifies the API key (in AndroidManifest.xml).
