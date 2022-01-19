@@ -3,6 +3,7 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/Users/daian/AndroidStudioProjects/ParkingLotApp/app/src/main/res/layout/activity_flight_plan_mapbox.xml" value="0.1671875" />
         <entry key="app/src/main/res/layout/activity_connection.xml" value="0.26268115942028986" />
         <entry key="app/src/main/res/layout/activity_flight_plan_mapbox.xml" value="0.17983789260385005" />
         <entry key="app/src/main/res/layout/activity_photo_stitcher.xml" value="0.26268115942028986" />
