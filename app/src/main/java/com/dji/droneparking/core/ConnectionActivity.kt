@@ -4,11 +4,16 @@ import android.Manifest
 import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
-import android.view.WindowInsets
+import android.view.View
+import android.view.WindowInsetsController
 import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.dji.droneparking.R
+import android.view.WindowInsets
+
+
+
 
 /**
  * This is the first activity in the app. Its purpose is to host ConnectionFragment.kt upon startup
@@ -43,9 +48,16 @@ class ConnectionActivity : AppCompatActivity() {
             ), 1
         )
 
+
         //if the current build version is at least API level 30 (Android 11), hide the phone's status bar.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.insetsController?.hide(WindowInsets.Type.statusBars())
+            window.setDecorFitsSystemWindows(false)
+            val controller = window.insetsController
+            if (controller != null) {
+                controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                controller.systemBarsBehavior =
+                    WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
         } else {
             @Suppress("DEPRECATION")
             //Otherwise, force the activity to show as full screen
@@ -60,5 +72,7 @@ class ConnectionActivity : AppCompatActivity() {
         supportFragmentManager.beginTransaction()
             .add(R.id.frameLayoutFragment, connectionFragment, "connection").commit()
     }
+
+
 
 }
