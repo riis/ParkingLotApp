@@ -22,7 +22,7 @@
             android:fontFamily="sans-serif-light"
             android:gravity="center"
             android:text="Status: No Product Connected"
-            android:textColor="@android:color/black"
+            android:textColor="@android:color/holo_blue_dark"
             android:textSize="28sp"
             android:textStyle="bold"
             app:layout_constraintBottom_toTopOf="@+id/textView2"

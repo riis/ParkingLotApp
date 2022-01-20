@@ -2,52 +2,39 @@ package com.dji.droneparking.net
 
 import android.content.Context
 import android.graphics.BitmapFactory
-import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Message
 import android.util.Log
 import androidx.annotation.Nullable
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.bumptech.glide.Glide
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.BufferedInputStream
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.io.OutputStream
 import java.lang.Exception
 import java.net.URL
-
 import javax.net.ssl.HttpsURLConnection
+import java.io.*
 
 
-// This class makes HTTP requests to the stitching server while giving back progress updates
 class StitchRequester(context: Context) {
 
     //class variables
-    private var mHandler: Handler? = null
-    private var mbatchId: String? = null
-    private val xtag = "cattle"
     private val activity: AppCompatActivity = context as AppCompatActivity
+    private var mHandler: Handler? = null
 
     //completion callbacks
-    enum class StitchMessage(val value: Int) {
-        STITCH_START_SUCCESS(100), STITCH_START_FAILURE(101), STITCH_IMAGE_ADD_SUCCESS(102), STITCH_IMAGE_ADD_FAILURE(
-            103
-        ),
-        STITCH_LOCK_SUCCESS(104), STITCH_LOCK_FAILURE(105), STITCH_POLL_NOT_COMPLETE(106), STITCH_POLL_COMPLETE(
-            107
-        ),
-        STITCH_RESULT_SUCCESS(108), STITCH_RESULT_FAILURE(109);
-
+    enum class StitchResponseCodes(val value: Int) {
+        START_BATCH_SUCCESS(100), START_BATCH_FAILURE(101),
+        STITCH_IMAGE_ADD_SUCCESS(102), STITCH_IMAGE_ADD_FAILURE(103),
+        STITCH_BATCH_SUCCESS(104), STITCH_BATCH_FAILURE(105),
+        STITCH_POLL_NOT_COMPLETE(106), STITCH_POLL_COMPLETE(107),
+        STITCH_RESULT_SUCCESS(108), STITCH_RESULT_FAILURE(109),
     }
 
     //setting the handler to one provided by PhotoStitcherActivity.kt
     fun setHandler(h: Handler) {
         this.mHandler = h
-
     }
 
     //Obtaining a batch id for a new set of images
@@ -55,31 +42,30 @@ class StitchRequester(context: Context) {
         activity.lifecycleScope.launch {
             withContext(Dispatchers.IO) {
                 //creating a URL object for the link needed to obtain a batch id
-                val url: URL? = getURLforPath(NetworkInformation.PATH_STITCH_START)
+                val url: URL? = getURLforPath(NetworkInformation.START_STITCH_URl)
 
-                //trying to establish a connection to the url and then posting a message to it
+                //trying to establish a connection to the url and then getting a message from it
                 var connection: HttpsURLConnection? = null
+
                 try {
                     if (url != null) {
                         connection = url.openConnection() as HttpsURLConnection
                     }
                     if (connection != null) {
-                        connection.requestMethod = "POST"
+                        connection.requestMethod = "GET"
                     }
                     //reading responses from the connection to get the batch id
                     val r = BufferedReader(InputStreamReader(connection?.inputStream))
                     val batchId: String = r.readLine()
-                    mbatchId = batchId
 
                     connection?.connect() //Opens a communications link to the resource referenced by this URL
 
                     //sending the Handler a message to start the stitching process with the batchId
-                    sendMessage(StitchMessage.STITCH_START_SUCCESS, batchId)
+                    sendMessage(StitchResponseCodes.START_BATCH_SUCCESS, batchId)
 
                     //catching any errors and sending them to Handler
                 } catch (e: Exception) {
-                    sendMessage(StitchMessage.STITCH_LOCK_FAILURE, e.localizedMessage)
-                    e.printStackTrace()
+                    sendMessage(StitchResponseCodes.START_BATCH_FAILURE, e.message)
 
                     //once the thread is complete, close the connection
                 } finally {
@@ -89,78 +75,82 @@ class StitchRequester(context: Context) {
         }
     }
 
+
     /* Add a list of images to the batch by sending it over the network */
-    fun addImage(image: Bitmap) {
+    fun addImage(file: File, batchId: String) {
         activity.lifecycleScope.launch {
             withContext(Dispatchers.IO) {
-
-            val url: URL? = getURLforPath(NetworkInformation.PATH_STITCH_ADD_IMAGE)
-            var connection: HttpsURLConnection? = null
-            try {
-                if (url != null) {
-                    connection = url.openConnection() as HttpsURLConnection
-                }
-                if (connection != null) {
-                    connection.requestMethod = "POST"
-                }
-                connection?.setRequestProperty("Batch-Id", mbatchId)
-                connection?.setRequestProperty("X-tag", xtag)
-                connection?.setRequestProperty("Content-Type", "image/png")
-                // Add the image data to the request.
-                connection?.doInput = true
-                connection?.doOutput = true
-                // Send the request.
-                connection?.connect()
-                val output: OutputStream? = connection?.outputStream
-                image.compress(Bitmap.CompressFormat.PNG, 100, output)
-                output?.close()
-
-                if (connection != null) {
-                    if (connection.responseCode == 202) {
-                        sendMessage(StitchMessage.STITCH_IMAGE_ADD_SUCCESS, null)
-                    } else {
-                        sendMessage(
-                            StitchMessage.STITCH_IMAGE_ADD_FAILURE,
-                            "Response code: " + connection.responseCode
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "addImagesrunException: $e")
-                sendMessage(StitchMessage.STITCH_IMAGE_ADD_FAILURE, null)
-                e.printStackTrace()
-            } finally {
-                connection?.disconnect()
-            }
-
-            }
-        }
-
-    }
-
-    fun lockBatch() {
-        activity.lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
-                val url: URL? = getURLforPath(NetworkInformation.PATH_STITCH_LOCK)
+                val boundary = "Boundary-${System.currentTimeMillis()}"
+                val url: URL? =
+                    getURLforPath(NetworkInformation.ADD_IMAGE_URL + batchId)
                 var connection: HttpsURLConnection? = null
+
                 try {
                     if (url != null) {
                         connection = url.openConnection() as HttpsURLConnection
+                        Log.d("Requester", connection.toString())
                     }
-                    connection?.requestMethod = "POST"
-                    connection?.setRequestProperty("Batch-Id", mbatchId)
-                    connection?.setRequestProperty("X-tag", xtag)
-                    connection?.connect()
+                    if (connection != null) {
+
+                        connection.addRequestProperty(
+                            "Content-Type",
+                            "multipart/form-data; boundary=$boundary"
+                        )
+                        connection.addRequestProperty(
+                            "Connection", "close"
+                        )
+                        connection.requestMethod = "POST"
+                        connection.doInput = true
+                        connection.doOutput = true
+
+                        val output = connection.outputStream
+                        val writer = BufferedWriter(OutputStreamWriter(output))
+
+                        writer.write("\n--$boundary\n")
+                        writer.write("Content-Disposition: form-data;"
+                                + "name=\"myFile\";"
+                                + "filename=\"" + file.name + "\""
+                                + "\nContent-Type: image/png\n\n")
+                        writer.flush()
+
+                        val inputStreamToFile = FileInputStream(file)
+                        var bytesRead: Int
+                        val dataBuffer = ByteArray(1024)
+                        while (inputStreamToFile.read(dataBuffer).also { bytesRead = it } != -1) {
+                            output.write(dataBuffer, 0, bytesRead)
+                        }
+                        output.flush()
+
+                        // End of the multipart request
+                        writer.write("\n--$boundary--\n")
+                        writer.flush()
+
+                        // Close the streams
+                        output.close()
+                        writer.close()
+                    }
+
+
                     if (connection != null) {
                         if (connection.responseCode == 200) {
-                            sendMessage(StitchMessage.STITCH_LOCK_SUCCESS, null)
+                            val r = BufferedReader(InputStreamReader(connection?.inputStream))
+                            val uploadedImageName: String = r.readLine()
+                            sendMessage(StitchResponseCodes.STITCH_IMAGE_ADD_SUCCESS, uploadedImageName)
                         } else {
-                            sendMessage(StitchMessage.STITCH_LOCK_FAILURE, null)
+                            sendMessage(
+                                StitchResponseCodes.STITCH_IMAGE_ADD_FAILURE,
+                                connection.responseCode
+                            )
                         }
                     }
-                } catch (ex: Exception) {
-                    ex.printStackTrace()
-                    sendMessage(StitchMessage.STITCH_LOCK_FAILURE, null)
+                    else{
+                        sendMessage(StitchResponseCodes.STITCH_IMAGE_ADD_FAILURE, "null connection")
+                    }
+                    //catching any errors and sending them to Handler
+                } catch (e: Exception) {
+                    sendMessage(StitchResponseCodes.START_BATCH_FAILURE, e.message + "; server response: " + connection?.responseCode)
+
+                    //once the thread is complete, close the connection
                 } finally {
                     connection?.disconnect()
                 }
@@ -168,29 +158,35 @@ class StitchRequester(context: Context) {
         }
     }
 
-    fun pollBatch() {
+    fun stitchBatch(batchId: String) {
         activity.lifecycleScope.launch {
             withContext(Dispatchers.IO) {
-                val url: URL? = getURLforPath(NetworkInformation.PATH_STITCH_POLL)
+                val url: URL? = getURLforPath(NetworkInformation.STITCH_BATCH_URL + batchId)
+
+                //trying to establish a connection to the url and then getting a message from it
                 var connection: HttpsURLConnection? = null
                 try {
                     if (url != null) {
                         connection = url.openConnection() as HttpsURLConnection
                     }
-                    connection?.requestMethod = "POST"
-                    connection?.setRequestProperty("Batch-Id", mbatchId)
-                    connection?.setRequestProperty("X-tag", xtag)
-                    connection?.connect()
                     if (connection != null) {
-                        if (connection.responseCode == HttpsURLConnection.HTTP_OK) {
-                            sendMessage(StitchMessage.STITCH_POLL_COMPLETE, null)
+                        connection.requestMethod = "GET"
+                    }
+
+                    connection?.connect() //Opens a communications link to the resource referenced by this URL
+
+                    if (connection != null) {
+                        if (connection.responseCode == 200) {
+                            sendMessage(StitchResponseCodes.STITCH_BATCH_SUCCESS, null)
                         } else {
-                            sendMessage(StitchMessage.STITCH_POLL_NOT_COMPLETE, null)
+                            sendMessage(StitchResponseCodes.STITCH_BATCH_FAILURE, connection.responseCode)
                         }
                     }
-                } catch (ex: Exception) {
-                    ex.printStackTrace()
-                    sendMessage(StitchMessage.STITCH_POLL_NOT_COMPLETE, null)
+                    //catching any errors and sending them to Handler
+                } catch (e: Exception) {
+                    sendMessage(StitchResponseCodes.STITCH_BATCH_FAILURE, e.message)
+
+                    //once the thread is complete, close the connection
                 } finally {
                     connection?.disconnect()
                 }
@@ -198,34 +194,89 @@ class StitchRequester(context: Context) {
         }
     }
 
-    fun retrieveResult() {
+    fun pollBatch(batchId: String) {
         activity.lifecycleScope.launch {
             withContext(Dispatchers.IO) {
-                val url: URL? = getURLforPath(NetworkInformation.PATH_STITCH_RETRIEVE)
+                val url: URL? = getURLforPath(NetworkInformation.POLL_BATCH_URL + batchId)
+
+                //trying to establish a connection to the url and then getting a message from it
                 var connection: HttpsURLConnection? = null
+
                 try {
                     if (url != null) {
                         connection = url.openConnection() as HttpsURLConnection
                     }
-                    connection?.requestMethod = "GET"
-                    connection?.setRequestProperty("Batch-Id", mbatchId)
-                    connection?.setRequestProperty("x-tag", xtag)
-                    connection?.doInput = true
-                    val inputStream =
-                        BufferedInputStream(connection?.inputStream)
-                    //contains resulting stitch
-                    val b = BitmapFactory.decodeStream(inputStream)
-                    connection?.connect()
                     if (connection != null) {
-                        if (connection.responseCode == HttpsURLConnection.HTTP_BAD_REQUEST) {
-                            sendMessage(StitchMessage.STITCH_RESULT_FAILURE, null)
+                        connection.requestMethod = "GET"
+                    }
+
+                    connection?.connect() //Opens a communications link to the resource referenced by this URL
+
+                    if (connection != null) {
+                        if (connection.responseCode == 107) {
+                            sendMessage(StitchResponseCodes.STITCH_POLL_COMPLETE, null)
                         } else {
-                            sendMessage(StitchMessage.STITCH_RESULT_SUCCESS, b)
+                            sendMessage(
+                                StitchResponseCodes.STITCH_POLL_NOT_COMPLETE,
+                                connection.responseCode
+                            )
                         }
                     }
-                } catch (ex: Exception) {
-                    ex.printStackTrace()
-                    sendMessage(StitchMessage.STITCH_RESULT_FAILURE, null)
+                    //catching any errors and sending them to Handler
+                } catch (e: Exception) {
+                    sendMessage(StitchResponseCodes.STITCH_POLL_NOT_COMPLETE, e.message)
+
+                    //once the thread is complete, close the connection
+                } finally {
+                    connection?.disconnect()
+                }
+            }
+        }
+    }
+
+    fun retrieveResult(batchId: String, photoDir: File) {
+        activity.lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                val url: URL? = getURLforPath(NetworkInformation.RETRIEVE_RESULT_URL + batchId)
+
+                //trying to establish a connection to the url and then getting a message from it
+                var connection: HttpsURLConnection? = null
+
+                try {
+                    if (url != null) {
+                        connection = url.openConnection() as HttpsURLConnection
+                    }
+                    if (connection != null) {
+                        connection.requestMethod = "GET"
+                    }
+
+                    connection?.connect() //Opens a communications link to the resource referenced by this URL
+
+                    if (connection != null) {
+                        if (connection.responseCode == 200) {
+                            val inputStream = BufferedInputStream(connection?.inputStream)
+                            val bitmap = BitmapFactory.decodeStream(inputStream)
+                            /*
+                            val bytes = inputStream.readBytes()
+                            File(photoDir.path + "/stitch results/stitch.png").also {
+                                    file -> file.parentFile?.mkdirs()
+                            }.writeBytes(bytes)
+
+                             */
+
+                            sendMessage(StitchResponseCodes.STITCH_RESULT_SUCCESS, bitmap)
+                        } else {
+                            sendMessage(
+                                StitchResponseCodes.STITCH_RESULT_FAILURE,
+                                connection.responseCode
+                            )
+                        }
+                    }
+                    //catching any errors and sending them to Handler
+                } catch (e: Exception) {
+                    sendMessage(StitchResponseCodes.STITCH_RESULT_FAILURE, e.message)
+
+                    //once the thread is complete, close the connection
                 } finally {
                     connection?.disconnect()
                 }
@@ -243,7 +294,7 @@ class StitchRequester(context: Context) {
         return null
     }
 
-    private fun sendMessage(msg: StitchMessage, @Nullable companion: Any?) {
+    private fun sendMessage(msg: StitchResponseCodes, @Nullable companion: Any?) {
         val value = msg.value
         val m: Message? = mHandler?.obtainMessage()
         if (m != null) {
@@ -255,7 +306,4 @@ class StitchRequester(context: Context) {
         m?.sendToTarget()
     }
 
-    companion object {
-        private const val TAG = "StitchRequester"
-    }
 }

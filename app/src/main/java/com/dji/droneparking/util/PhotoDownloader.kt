@@ -374,9 +374,12 @@ class PhotoDownloader(mContext: Context) {
 
         }
 
+
         override fun onRealtimeDataUpdate(p0: ByteArray?, p1: Long, p2: Boolean) {
             Log.d("BANANAPIE", "a")
         }
+
+
     }
 
     //Function used to download full resolution photos/videos from the DJI product's SD card

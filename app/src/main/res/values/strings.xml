@@ -46,5 +46,5 @@
     <string name="photos">Photos</string>
     <string name="mission_file_example_str">Mission 1 - 2021-08-26 1:17:25 - 4 images</string>
     <string name="stitch_images">Stitch Images</string>
-    <string name="download">Download</string>
+    <string name="download">Download Stitch</string>
 </resources>
