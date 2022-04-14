@@ -110,7 +110,7 @@ dependencies {
 
     //DJI Dependencies
     implementation 'androidx.multidex:multidex:2.0.1'
-    implementation('com.dji:dji-sdk:4.16', {
+    implementation('com.dji:dji-sdk:4.16.1', {
         exclude module: 'library-anti-distortion'
         exclude module: 'fly-safe-database'
     })
@@ -118,7 +118,7 @@ dependencies {
         exclude module: 'library-anti-distortion'
         exclude module: 'fly-safe-database'
     })
-    compileOnly('com.dji:dji-sdk-provided:4.16')
+    compileOnly('com.dji:dji-sdk-provided:4.16.1')
 
     //Google Maps
     implementation 'com.google.android.gms:play-services-maps:18.0.2'
