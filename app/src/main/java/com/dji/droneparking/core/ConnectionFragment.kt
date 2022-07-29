@@ -127,13 +127,14 @@ class ConnectionFragment : Fragment() {
                 override fun onProductConnect(baseProduct: BaseProduct?) {
                     Log.i(TAG, "onProductConnect: Product Connected")
                     rcConnection = true
+                    droneConnection = true
                     //do this right after connecting to the RC
                     lifecycleScope.launch {
                         mTextConnectionStatus.setTextColor(Color.GREEN)
                         mTextConnectionStatus.text = "Connected to RC ✓"
                         delay(2000)
                         mTextConnectionStatus.setTextColor(Color.BLACK)
-                        mTextConnectionStatus.text = "Connecting to Drone"
+                        mTextConnectionStatus.text = "Connecting to drone"
                     }
                 }
 
