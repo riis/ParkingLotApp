@@ -9,10 +9,8 @@ import android.view.WindowInsetsController
 import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import com.dji.droneparking.R
 import android.view.WindowInsets
-
-
+import com.dji.droneparking.R
 
 
 /**

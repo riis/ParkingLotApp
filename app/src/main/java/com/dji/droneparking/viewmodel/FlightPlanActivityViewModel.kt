@@ -40,9 +40,10 @@ class FlightPlanActivityViewModel : ViewModel() {
 
 
     val TF_OD_API_INPUT_SIZE = 416
-    val TF_OD_API_IS_QUANTIZED = true
+    val TF_OD_API_IS_QUANTIZED = false
+    val INPUT_SIZE = 416
     val TF_OD_API_MODEL_FILE = "model.tflite"
-    val TF_OD_API_LABELS_FILE = "file:///android_asset/coco.txt"
+    val TF_OD_API_LABELS_FILE = "coco.txt"
 
 //    val MODE: DetectorMode = TF_OD_API
     val MINIMUM_CONFIDENCE_TF_OD_API = 0.5f

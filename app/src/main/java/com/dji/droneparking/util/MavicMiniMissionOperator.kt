@@ -304,11 +304,11 @@ class MavicMiniMissionOperator(context: Context) {
         //running the execution in a coroutine to prevent blocking the main thread
         activity.lifecycleScope.launch {
             withContext(Dispatchers.Main) {
-
+                if(waypointTracker >= waypoints.size) return@withContext
                 currentWaypoint = waypoints[waypointTracker] //getting the current waypoint
 
                 //observing changes to the drone's location coordinates
-                droneLocationLiveData.observe(activity, { currentLocation ->
+                droneLocationLiveData.observe(activity) { currentLocation ->
 
                     state = WaypointMissionState.EXECUTING
 
@@ -328,7 +328,10 @@ class MavicMiniMissionOperator(context: Context) {
                         //If the drone has arrived at the destination, take a photo.
                         if (!photoTakenToggle && (distanceToWaypoint < 1.5)) {//if you haven't taken a photo
                             photoTakenToggle = takePhoto()
-                            Log.d("BANANAPIE", "attempting to take photo: $photoTakenToggle, $photoIsSuccess")
+                            Log.d(
+                                "BANANAPIE",
+                                "attempting to take photo: $photoTakenToggle, $photoIsSuccess"
+                            )
                         } else if (photoTakenToggle && (distanceToWaypoint >= 1.5)) {
                             photoTakenToggle = false
                             photoIsSuccess = false
@@ -413,7 +416,7 @@ class MavicMiniMissionOperator(context: Context) {
                         // checking for pause state
                         if (state == WaypointMissionState.EXECUTING) {
                             directions.altitude = currentWaypoint.altitude
-                        } else if (state == WaypointMissionState.EXECUTION_PAUSED){
+                        } else if (state == WaypointMissionState.EXECUTION_PAUSED) {
                             directions = Direction(0f, 0f, 0f, currentWaypoint.altitude)
                         }
                         move(directions)
@@ -429,7 +432,7 @@ class MavicMiniMissionOperator(context: Context) {
 
                     }
 
-                })
+                }
             }
         }
     }

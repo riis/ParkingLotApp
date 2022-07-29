@@ -27,6 +27,7 @@ import com.dji.droneparking.environment.BorderedText
 import com.dji.droneparking.environment.ImageUtils
 import com.dji.droneparking.tflite.Classifier
 import com.dji.droneparking.tflite.YoloV4Classifier
+import com.dji.droneparking.tflite.YoloV5Classifier
 import com.dji.droneparking.tracking.MultiBoxTracker
 import com.dji.droneparking.util.*
 import com.dji.droneparking.util.Tools.showToast
@@ -815,11 +816,12 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
             vM.TF_OD_API_INPUT_SIZE
 
         try {
-            vM.detector = YoloV4Classifier.create(
+            vM.detector = YoloV5Classifier.create(
                 assets,
                 vM.TF_OD_API_MODEL_FILE,
                 vM.TF_OD_API_LABELS_FILE,
-                vM.TF_OD_API_IS_QUANTIZED
+                vM.TF_OD_API_IS_QUANTIZED,
+                vM.INPUT_SIZE
             )
         } catch (e: IOException) {
             e.printStackTrace()
