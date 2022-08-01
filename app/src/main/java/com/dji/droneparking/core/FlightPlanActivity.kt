@@ -26,7 +26,6 @@ import com.dji.droneparking.dialog.LoadingDialog
 import com.dji.droneparking.environment.BorderedText
 import com.dji.droneparking.environment.ImageUtils
 import com.dji.droneparking.tflite.Classifier
-import com.dji.droneparking.tflite.YoloV4Classifier
 import com.dji.droneparking.tflite.YoloV5Classifier
 import com.dji.droneparking.tracking.MultiBoxTracker
 import com.dji.droneparking.util.*
@@ -41,18 +40,12 @@ import com.mapbox.mapboxsdk.plugins.annotation.*
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory
 import com.riis.cattlecounter.util.distanceToSegment
 import dji.common.camera.SettingsDefinitions
-import dji.common.error.DJICameraError
-import dji.common.error.DJIError
-import dji.common.gimbal.*
 import dji.common.mission.waypoint.WaypointMission
 import dji.common.model.LocationCoordinate2D
 import dji.common.product.Model
-import dji.common.util.CommonCallbacks
 import dji.sdk.base.BaseProduct
 import dji.sdk.camera.VideoFeeder
 import dji.sdk.codec.DJICodecManager
-import dji.sdk.gimbal.Gimbal
-import dji.sdk.media.MediaFile
 import dji.sdk.media.MediaManager
 import dji.sdk.products.Aircraft
 import dji.ux.widget.ReturnHomeWidget
