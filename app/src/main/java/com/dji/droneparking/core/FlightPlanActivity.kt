@@ -240,7 +240,11 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
         override fun onAnnotationDragFinished(symbol: Symbol) {
             //when a symbol is finished being dragged, recreate it on the map and
             // ... reconfigure the drone's flight plan using it.
+            Log.d("FlightPlanActivity", "onAnnotationDragFinished: Moving marker...")
+
             configureFlightPlan(symbol)
+
+
         }
         override fun onAnnotationDragStarted(symbol: Symbol) {
             //if a symbol is dragged on the map, remove it's symbol
@@ -327,6 +331,8 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
 
     //Function used to add "unvisited" waypoint markers to the map and use them to configure the drone's flight plan
     private fun configureFlightPlan(symbol: Symbol) {
+        // prevents infinite loop
+        vM.symbolManager.removeDragListener(symbolDragListener)
 
         vM.symbols.add(symbol) //adding the marker to the viewModel's symbol list
 
@@ -379,6 +385,7 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
                 drawFlightPlan() //draw the drone's flight path within the filled polygon
             } catch (ignored: Exception) {
             }
+
         }
 
         layoutConfirmPlan.visibility = View.VISIBLE //show the cancelFlightPlanBtn and startFlightBtn buttons
@@ -415,8 +422,6 @@ class FlightPlanActivity : AppCompatActivity(), OnMapReadyCallback,
     // ... the necessary waypoints the drone will need to stop at and take pictures in order to capture
     // ... the whole area with its camera. The coordinates of these waypoints will be stored in vM.flightPlan2D.
     private fun drawFlightPlan() {
-
-        vM.symbolManager.removeDragListener(symbolDragListener) // prevents infinite loop
 
         if (vM.polygonCoordinates.size < 3) return
 
