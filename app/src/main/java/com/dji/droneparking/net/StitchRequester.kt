@@ -13,8 +13,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.lang.Exception
 import java.net.URL
-import javax.net.ssl.HttpsURLConnection
 import java.io.*
+import java.net.HttpURLConnection
 
 
 class StitchRequester(context: Context) {
@@ -45,11 +45,11 @@ class StitchRequester(context: Context) {
                 val url: URL? = getURLforPath(NetworkInformation.START_STITCH_URl)
 
                 //trying to establish a connection to the url and then getting a message from it
-                var connection: HttpsURLConnection? = null
+                var connection: HttpURLConnection? = null
 
                 try {
                     if (url != null) {
-                        connection = url.openConnection() as HttpsURLConnection
+                        connection = url.openConnection() as HttpURLConnection
                     }
                     if (connection != null) {
                         connection.requestMethod = "GET"
@@ -83,11 +83,11 @@ class StitchRequester(context: Context) {
                 val boundary = "Boundary-${System.currentTimeMillis()}"
                 val url: URL? =
                     getURLforPath(NetworkInformation.ADD_IMAGE_URL + batchId)
-                var connection: HttpsURLConnection? = null
+                var connection: HttpURLConnection? = null
 
                 try {
                     if (url != null) {
-                        connection = url.openConnection() as HttpsURLConnection
+                        connection = url.openConnection() as HttpURLConnection
                         Log.d("Requester", connection.toString())
                     }
                     if (connection != null) {
@@ -164,10 +164,10 @@ class StitchRequester(context: Context) {
                 val url: URL? = getURLforPath(NetworkInformation.STITCH_BATCH_URL + batchId)
 
                 //trying to establish a connection to the url and then getting a message from it
-                var connection: HttpsURLConnection? = null
+                var connection: HttpURLConnection? = null
                 try {
                     if (url != null) {
-                        connection = url.openConnection() as HttpsURLConnection
+                        connection = url.openConnection() as HttpURLConnection
                     }
                     if (connection != null) {
                         connection.requestMethod = "GET"
@@ -200,11 +200,11 @@ class StitchRequester(context: Context) {
                 val url: URL? = getURLforPath(NetworkInformation.POLL_BATCH_URL + batchId)
 
                 //trying to establish a connection to the url and then getting a message from it
-                var connection: HttpsURLConnection? = null
+                var connection: HttpURLConnection? = null
 
                 try {
                     if (url != null) {
-                        connection = url.openConnection() as HttpsURLConnection
+                        connection = url.openConnection() as HttpURLConnection
                     }
                     if (connection != null) {
                         connection.requestMethod = "GET"
@@ -240,11 +240,11 @@ class StitchRequester(context: Context) {
                 val url: URL? = getURLforPath(NetworkInformation.RETRIEVE_RESULT_URL + batchId)
 
                 //trying to establish a connection to the url and then getting a message from it
-                var connection: HttpsURLConnection? = null
+                var connection: HttpURLConnection? = null
 
                 try {
                     if (url != null) {
-                        connection = url.openConnection() as HttpsURLConnection
+                        connection = url.openConnection() as HttpURLConnection
                     }
                     if (connection != null) {
                         connection.requestMethod = "GET"
